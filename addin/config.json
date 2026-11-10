@@ -1,0 +1,17 @@
+{
+  "name": "Combustível IA",
+  "supportEmail": "suporte@combustivelia.com.br",
+  "version": "0.2.0",
+  "items": [
+    {
+      "url": "https://ricardocfs.github.io/combustivelia/addin/combustivelia.html",
+      "path": "ActivityLink/",
+      "menuName": {
+        "pt-BR": "Combustível IA",
+        "en": "Combustível IA",
+        "es": "Combustible IA"
+      }
+    }
+  ],
+  "files": {}
+}
