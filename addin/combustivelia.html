@@ -4,16 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Combustível IA</title>
-  <link rel="stylesheet" href="combustivelia.css?v=0.3.0">
+  <link rel="stylesheet" href="combustivelia.css?v=0.4.0">
 </head>
 <body>
   <main id="combustivelia" class="cia-root" aria-live="polite">
     <header class="cia-header">
       <p class="cia-brand">Combustível IA</p>
-      <h1 class="cia-title">Motor ligado parado</h1>
+      <h1 class="cia-title">Sua frota esta semana</h1>
       <p class="cia-subtitle" id="cia-period">Últimos 7 dias</p>
     </header>
 
+    <section class="cia-card cia-card-first" id="cia-actions-card" hidden>
+      <h2 class="cia-card-title">O que fazer esta semana</h2>
+      <p class="cia-card-sub" id="cia-actions-sub"></p>
+      <ol class="cia-actions" id="cia-actions"></ol>
+    </section>
+
+    <h2 class="cia-section-title" id="cia-idle-title" hidden>Motor ligado parado</h2>
     <section class="cia-kpis" id="cia-kpis" hidden>
       <div class="cia-kpi">
         <p class="cia-kpi-label">Custo do motor ligado parado</p>
@@ -45,7 +52,7 @@
     </div>
 
     <section class="cia-card" id="cia-ranking-card" hidden>
-      <h2 class="cia-card-title">Onde agir primeiro</h2>
+      <h2 class="cia-card-title">Por veículo</h2>
       <p class="cia-card-sub">Veículos que mais gastaram com motor ligado parado e os motoristas que mais contribuíram em cada um.</p>
       <ol class="cia-vehicles" id="cia-ranking"></ol>
       <p class="cia-note" id="cia-basis"></p>
@@ -60,6 +67,6 @@
 
     <p class="cia-status" id="cia-status">Carregando dados da frota…</p>
   </main>
-  <script src="combustivelia.js?v=0.3.0"></script>
+  <script src="combustivelia.js?v=0.4.0"></script>
 </body>
 </html>

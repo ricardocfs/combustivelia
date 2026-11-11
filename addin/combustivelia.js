@@ -1,16 +1,21 @@
-/* Combustível IA · Add-In de página para o MyGeotab (versão 0.3)
- * Motor ligado parado por veículo, em horas, litros e R$, com os 3 motoristas
+/* Combustível IA · Add-In de página para o MyGeotab (versão 0.4)
+ * Abre com "O que fazer esta semana": poucas ações, cada uma com por quê, o que
+ * verificar, o que fazer e quanto vale. Depois, motor ligado parado por veículo, em horas, litros e R$, com os 3 motoristas
  * que mais contribuíram em cada veículo. Check-up de dados: quais frentes de
  * economia esta frota permite analisar. Somente leitura. Respeita o filtro de grupos.
  */
 (function () {
   'use strict';
 
-  var VERSION = '0.3.0';
+  var VERSION = '0.4.0';
   var DAYS = 7;
   var TOP_VEHICLES = 10;
   var TOP_DRIVERS = 3;
   var UNKNOWN_DRIVER = 'UnknownDriverId';
+  var LONG_IDLE_S = 3600;       // viagem com 1 h ou mais de motor ligado parado
+  var MAX_ACTIONS = 5;          // um assessor dá poucas ações, as que mais valem
+  var MIN_WEEK_COST = 25;       // abaixo disso (R$ na semana) não vira ação
+  var OUTLIER = 1.5;            // "bem acima" = 50% acima da referência
 
   // Preço padrão: média nacional de revenda do diesel S10, ANP, semana de 18 a 24/10/2026
   var DEFAULT_PRICE = 7.32;
@@ -57,19 +62,23 @@
     var names = driverNames(users);
     var byId = {};
     devices.forEach(function (d) {
-      byId[d.id] = { id: d.id, name: d.name || d.id, idleS: 0, drivingS: 0, unknownS: 0, byDriver: {} };
+      byId[d.id] = { id: d.id, name: d.name || d.id, idleS: 0, drivingS: 0, unknownS: 0, longIdleS: 0, byDriver: {} };
     });
     trips.forEach(function (t) {
       var row = byId[refId(t.device)];
       if (!row) return; // veículo fora do filtro de grupos
       var idle = parseDuration(t.idlingDuration);
+      var driving = parseDuration(t.drivingDuration);
+      var long = idle >= LONG_IDLE_S ? idle : 0; // viagem com 1 h ou mais parada: espera, não hábito
       row.idleS += idle;
-      row.drivingS += parseDuration(t.drivingDuration);
-      if (!idle) return;
+      row.drivingS += driving;
+      row.longIdleS += long;
       var id = refId(t.driver);
       if (!id || id === UNKNOWN_DRIVER) { row.unknownS += idle; return; }
-      var d = row.byDriver[id] || (row.byDriver[id] = { id: id, name: names[id] || 'Motorista ' + id, idleS: 0, trips: 0 });
+      var d = row.byDriver[id] || (row.byDriver[id] = { id: id, name: names[id] || 'Motorista ' + id, idleS: 0, engineS: 0, longIdleS: 0, trips: 0 });
       d.idleS += idle;
+      d.engineS += idle + driving;
+      d.longIdleS += long;
       d.trips += 1;
     });
 
@@ -79,13 +88,16 @@
       var engine = r.idleS + r.drivingS;
       totalIdle += r.idleS;
       totalEngine += engine;
-      var drivers = Object.keys(r.byDriver).map(function (id) { return r.byDriver[id]; });
+      var drivers = Object.keys(r.byDriver).map(function (id) { return r.byDriver[id]; })
+        .filter(function (d) { return d.idleS > 0; });
       drivers.forEach(function (d) { d.share = r.idleS > 0 ? d.idleS / r.idleS : 0; });
       drivers.sort(function (a, b) { return b.idleS - a.idleS; });
       return {
         id: r.id,
         name: r.name,
         idleS: r.idleS,
+        engineS: engine,
+        longIdleS: r.longIdleS,
         share: engine > 0 ? r.idleS / engine : 0,
         drivers: drivers.slice(0, TOP_DRIVERS),
         unknownShare: r.idleS > 0 ? r.unknownS / r.idleS : 0
@@ -157,6 +169,95 @@
     out.measuredVehicles = measured;
     out.price = price;
     return out;
+  }
+
+  /** O assessor: transforma os números em poucas ações, cada uma dizendo o quê,
+   *  quem, por quê, o que verificar, o que fazer e quanto vale. Antes de apontar
+   *  um motorista, separa o que é da pessoa, do caminhão e da operação. */
+  function advise(s, days) {
+    var monthFactor = 30 / (days || DAYS);
+    var fleetRate = s.share;
+    var price = s.price;
+    var actions = [];
+
+    s.ranking.forEach(function (v) {
+      if (v.cost < MIN_WEEK_COST || v.idleS <= 0) return;
+      var litersPerS = v.liters / v.idleS;
+      var longShare = v.longIdleS / v.idleS;
+      function money(idleS) { return Math.max(0, idleS) * litersPerS * price * monthFactor; }
+
+      if (longShare >= 0.5) {
+        var opValue = money(v.longIdleS);
+        actions.push({
+          type: 'operacao', tag: 'Operação', vehicleId: v.id, value: opValue, sortKey: opValue,
+          valueLabel: 'até ' + brl.format(opValue) + '/mês',
+          title: 'Descobrir onde o ' + v.name + ' espera com o motor ligado',
+          why: pctFmt.format(longShare) + ' do tempo parado dele foi em viagens com mais de 1 hora parada (' + hours(v.longIdleS) +
+            '). Isso costuma ser espera em cliente, doca ou pernoite, não hábito do motorista.',
+          check: 'Em Histórico de viagens, veja onde o ' + v.name + ' ficou parado nessas viagens. Se é sempre o mesmo lugar, o desperdício está ali.',
+          todo: 'Negocie uma janela de carga com o cliente ou oriente desligar o motor durante a espera.'
+        });
+      } else {
+        // Pessoa: o motorista fica parado bem mais que os colegas no MESMO caminhão?
+        var best = null;
+        v.drivers.forEach(function (d) {
+          if (!(d.engineS > 0) || d.cost < MIN_WEEK_COST || d.longIdleS / d.idleS >= 0.5) return;
+          var rate = d.idleS / d.engineS;
+          var peersEngine = v.engineS - d.engineS;
+          var peers = peersEngine >= 2 * 3600;
+          var ref = peers ? (v.idleS - d.idleS) / peersEngine : fleetRate;
+          if (!(ref > 0) || rate < OUTLIER * ref) return;
+          var value = money(d.idleS - ref * d.engineS);
+          if (!best || value > best.value) best = { d: d, rate: rate, ref: ref, peers: peers, value: value };
+        });
+        if (best) {
+          actions.push({
+            type: 'conducao', tag: 'Condução', vehicleId: v.id, value: best.value, sortKey: best.value,
+            valueLabel: 'até ' + brl.format(best.value) + '/mês',
+            title: 'Conversar com ' + best.d.name + ' sobre o motor ligado parado',
+            why: 'No ' + v.name + ', ' + best.d.name + ' ficou com o motor ligado parado ' + pctFmt.format(best.rate) + ' do tempo; ' +
+              (best.peers ? 'os outros motoristas do mesmo caminhão ficam em ' : 'a média da frota é ') + pctFmt.format(best.ref) +
+              '. Foram ' + hours(best.d.idleS) + ' e ' + brl.format(best.d.cost) + ' nesta semana.',
+            check: 'Pergunte se houve espera para carregar, descarregar ou pernoite. Se houve, o problema é da operação, não do motorista.',
+            todo: 'Se não houve espera, combine desligar o motor nas paradas e acompanhe aqui na próxima semana.'
+          });
+        } else if (fleetRate > 0 && v.share >= OUTLIER * fleetRate) {
+          // Caminhão: todos que dirigem ficam parados demais, sem esperas longas
+          var vValue = money(v.idleS - fleetRate * v.engineS);
+          actions.push({
+            type: 'equipe', tag: 'Condução', vehicleId: v.id, value: vValue, sortKey: vValue,
+            valueLabel: 'até ' + brl.format(vValue) + '/mês',
+            title: 'Combinar uma regra de motor parado para o ' + v.name,
+            why: 'O ' + v.name + ' fica com o motor ligado parado ' + pctFmt.format(v.share) + ' do tempo, contra ' + pctFmt.format(fleetRate) +
+              ' da média da frota, sem se concentrar em um motorista nem em esperas longas. Foram ' + brl.format(v.cost) + ' nesta semana.',
+            check: 'Veja se algo obriga a deixar o motor ligado parado nesse caminhão, como equipamento acionado pelo motor.',
+            todo: 'Combine com todos que dirigem esse caminhão: motor desligado nas paradas. Se o modelo permitir, peça à concessionária para programar o desligamento automático em marcha lenta.'
+          });
+        }
+      }
+
+      // Dados: sem saber quem dirigia, ninguém pode ser orientado
+      var unknownCost = v.cost * v.unknownShare;
+      if (v.unknownShare >= 0.3 && unknownCost >= MIN_WEEK_COST) {
+        var uValue = unknownCost * monthFactor;
+        actions.push({
+          type: 'dados', tag: 'Dados', vehicleId: v.id, value: 0, sortKey: uValue * 0.5,
+          valueLabel: brl.format(uValue) + '/mês sem dono',
+          title: 'Identificar quem dirige o ' + v.name,
+          why: pctFmt.format(v.unknownShare) + ' do tempo parado dele (' + brl.format(unknownCost) +
+            ' nesta semana) não tem motorista identificado. Sem saber quem dirigia, não dá para orientar ninguém.',
+          check: 'Veja se o caminhão tem leitor de identificação de motorista e se os motoristas estão usando.',
+          todo: 'Ative a identificação (chaveiro, cartão ou login no Geotab Drive) e cobre o uso na saída do pátio.'
+        });
+      }
+    });
+
+    actions.sort(function (a, b) { return b.sortKey - a.sortKey; });
+    var top = actions.slice(0, MAX_ACTIONS);
+    return {
+      actions: top,
+      monthlyValue: top.reduce(function (sum, a) { return sum + a.value; }, 0)
+    };
   }
 
   /** Check-up de dados: o que esta frota permite analisar em cada frente de economia. */
@@ -272,6 +373,40 @@
     return li;
   }
 
+  function actionItem(a, i) {
+    var li = el('li', 'cia-action');
+    var head = el('div', 'cia-action-head');
+    head.appendChild(el('span', 'cia-action-pos', String(i + 1)));
+    var titleBox = el('div', 'cia-action-titlebox');
+    titleBox.appendChild(el('span', 'cia-tag cia-tag-' + a.type, a.tag));
+    titleBox.appendChild(el('p', 'cia-action-title', a.title));
+    head.appendChild(titleBox);
+    head.appendChild(el('span', 'cia-action-value' + (a.type === 'dados' ? ' cia-action-value-muted' : ''), a.valueLabel));
+    li.appendChild(head);
+    var body = el('dl', 'cia-action-body');
+    [['Por quê', a.why], ['Verifique', a.check], ['Faça', a.todo]].forEach(function (pair) {
+      body.appendChild(el('dt', 'cia-action-label', pair[0]));
+      body.appendChild(el('dd', 'cia-action-text', pair[1]));
+    });
+    li.appendChild(body);
+    return li;
+  }
+
+  function renderActions(advice) {
+    var list = $('cia-actions');
+    clear(list);
+    var n = advice.actions.length;
+    var sub;
+    if (n === 0) sub = 'Nenhuma ação urgente: o motor ligado parado está dentro do normal da frota.';
+    else {
+      sub = (n === 1 ? '1 ação' : n + ' ações') + ', em ordem de valor.';
+      if (advice.monthlyValue > 0) sub += ' Juntas, podem recuperar até ' + brl.format(advice.monthlyValue) + ' por mês.';
+    }
+    $('cia-actions-sub').textContent = sub;
+    advice.actions.forEach(function (a, i) { list.appendChild(actionItem(a, i)); });
+    $('cia-actions-card').hidden = false;
+  }
+
   var STATUS_TEXT = { ok: 'Disponível', partial: 'Parcial', none: 'Sem dados' };
 
   function renderCheckup(assessment) {
@@ -308,6 +443,7 @@
     if (!last) return;
     var price = readPrice();
     var s = valueIdle(last.summary, last.fuel, price);
+    renderActions(advise(s, DAYS));
     var dateFmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' });
     $('cia-period').textContent = 'De ' + dateFmt.format(last.start) + ' a ' + dateFmt.format(last.end);
     $('cia-kpi-cost').textContent = brl.format(s.totalCost);
@@ -316,6 +452,7 @@
     $('cia-kpi-share').textContent = pctFmt.format(s.share) + ' do tempo de motor ligado';
     $('cia-kpi-vehicles').textContent = String(s.vehicles);
     $('cia-kpis').hidden = false;
+    $('cia-idle-title').hidden = false;
 
     var n = s.ranking.length;
     var basis;
@@ -422,7 +559,7 @@
     module.exports = {
       VERSION: VERSION, DEFAULT_PRICE: DEFAULT_PRICE, IDLE_RATE_LPH: IDLE_RATE_LPH,
       parseDuration: parseDuration, summarizeIdle: summarizeIdle, idleFuelByDevice: idleFuelByDevice,
-      valueIdle: valueIdle, assessData: assessData, parsePrice: parsePrice
+      valueIdle: valueIdle, advise: advise, assessData: assessData, parsePrice: parsePrice
     };
   }
 })();
