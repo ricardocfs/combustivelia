@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '0.7.0';
+  var VERSION = '0.7.1';
   var DAYS = 7;
   var TOP_VEHICLES = 10;
   var TOP_DRIVERS = 3;
@@ -1002,6 +1002,7 @@
   var last = null; // último resultado, para recalcular quando o preço muda
 
   function render() {
+    if ($('cia-version')) $('cia-version').textContent = 'Combustível IA · versão ' + VERSION;
     if (!last) return;
     var price = readPrice();
     var s = valueIdle(last.summary, last.fuel, price);
