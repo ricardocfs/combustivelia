@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Combustível IA</title>
   <link rel="icon" href="icone.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="combustivelia.css?v=0.6.1">
+  <link rel="stylesheet" href="combustivelia.css?v=0.6.2">
 </head>
 <body>
   <main id="combustivelia" class="cia-root" aria-live="polite">
@@ -75,17 +75,19 @@
       <div id="cia-evo-content" hidden>
         <section class="cia-kpis">
           <div class="cia-kpi">
-            <p class="cia-kpi-label">Eficiência da frota na última semana</p>
+            <p class="cia-kpi-label">Gasto com diesel na última semana</p>
+            <p class="cia-kpi-value" id="cia-evo-cost">—</p>
+            <p class="cia-kpi-note" id="cia-evo-liters"></p>
+          </div>
+          <div class="cia-kpi">
+            <p class="cia-kpi-label">Gasto a mais que o normal</p>
+            <p class="cia-kpi-value" id="cia-evo-extra">—</p>
+            <p class="cia-kpi-note" id="cia-evo-extra-note"></p>
+          </div>
+          <div class="cia-kpi">
+            <p class="cia-kpi-label">Eficiência da frota</p>
             <p class="cia-kpi-value" id="cia-evo-kml">—</p>
             <p class="cia-kpi-note" id="cia-evo-kml-note"></p>
-          </div>
-          <div class="cia-kpi">
-            <p class="cia-kpi-label">Diesel na semana</p>
-            <p class="cia-kpi-value" id="cia-evo-liters">—</p>
-          </div>
-          <div class="cia-kpi">
-            <p class="cia-kpi-label">Gasto com diesel na semana</p>
-            <p class="cia-kpi-value" id="cia-evo-cost">—</p>
           </div>
           <div class="cia-kpi">
             <p class="cia-kpi-label">Veículos comparados</p>
@@ -96,14 +98,14 @@
 
         <div class="cia-charts">
           <section class="cia-card">
-            <h2 class="cia-card-title">Eficiência da frota (km/L)</h2>
-            <p class="cia-card-sub">Por semana, nas últimas 6 semanas.</p>
-            <div class="cia-chart" id="cia-chart-kml"></div>
-          </section>
-          <section class="cia-card">
             <h2 class="cia-card-title">Custo do motor ligado parado</h2>
             <p class="cia-card-sub">Por semana, ao preço do diesel acima.</p>
             <div class="cia-chart" id="cia-chart-idle"></div>
+          </section>
+          <section class="cia-card">
+            <h2 class="cia-card-title">Eficiência da frota (km/L)</h2>
+            <p class="cia-card-sub">Por semana, nas últimas 6 semanas.</p>
+            <div class="cia-chart" id="cia-chart-kml"></div>
           </section>
         </div>
 
@@ -121,10 +123,10 @@
           <p class="cia-note" id="cia-better-empty" hidden>Nenhum veículo melhorou de forma relevante nesta semana.</p>
         </section>
 
-        <p class="cia-note">Cada veículo é comparado com a própria média das 4 semanas anteriores, não com os outros, porque rota e carga mudam de um caminhão para outro. Só entram semanas com 300 km ou mais, e variações menores que 3% são tratadas como normais.</p>
+        <p class="cia-note cia-note-page">Cada veículo é comparado com a própria média das 4 semanas anteriores, não com os outros, porque rota e carga mudam de um caminhão para outro. Só entram semanas com 300 km ou mais, e variações menores que 3% são tratadas como normais.</p>
       </div>
     </div>
   </main>
-  <script src="combustivelia.js?v=0.6.1"></script>
+  <script src="combustivelia.js?v=0.6.2"></script>
 </body>
 </html>

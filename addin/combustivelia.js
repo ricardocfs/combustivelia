@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '0.6.1';
+  var VERSION = '0.6.2';
   var DAYS = 7;
   var TOP_VEHICLES = 10;
   var TOP_DRIVERS = 3;
@@ -369,8 +369,11 @@
       movers.push({ id: v.id, name: v.name, kmlLast: kmlL, kmlBase: kmlB, change: change, km: kmL, liters: lL,
         extraLiters: extraL, value: extraL * price, causes: causes, todo: todo, kind: change < 0 ? kind : 'better' });
     });
-    var worse = movers.filter(function (m) { return m.change < 0; }).sort(function (a, b) { return b.value - a.value; }).slice(0, TOP_MOVERS);
-    var better = movers.filter(function (m) { return m.change > 0; }).sort(function (a, b) { return a.value - b.value; }).slice(0, TOP_MOVERS);
+    var worseAll = movers.filter(function (m) { return m.change < 0; }).sort(function (a, b) { return b.value - a.value; });
+    var betterAll = movers.filter(function (m) { return m.change > 0; }).sort(function (a, b) { return a.value - b.value; });
+    var worse = worseAll.slice(0, TOP_MOVERS), better = betterAll.slice(0, TOP_MOVERS);
+    var extraValue = worseAll.reduce(function (x, m) { return x + m.value; }, 0);
+    var savedValue = -betterAll.reduce(function (x, m) { return x + m.value; }, 0);
 
     var last = weeks[lastW], baseKm = 0, baseL = 0;
     for (var j = baseFrom; j < lastW; j++) { baseKm += weeks[j].km; baseL += weeks[j].liters; }
@@ -379,6 +382,7 @@
       weeks: weeks, hasFuel: weeks.some(function (x) { return x.liters > 0; }),
       kml: last.kml, baseKml: baseKml, change: baseKml > 0 && last.kml > 0 ? (last.kml - baseKml) / baseKml : 0,
       liters: last.liters, cost: last.liters * price, compared: movers.length,
+      extraValue: extraValue, worseCount: worseAll.length, savedValue: savedValue, betterCount: betterAll.length,
       worse: worse, better: better
     };
   }
@@ -517,6 +521,18 @@
     return 'O tempo parado (' + own + ' contra ' + fleet + ' da frota) não aponta para um motorista, para o caminhão nem para esperas longas.';
   }
 
+  /** Impacto financeiro de um veículo, para ordenar e para o número à direita.
+   *  1º economia possível (R$/mês), 2º dinheiro sem motorista identificado, 3º gasto da semana. */
+  function impactOf(v, actions) {
+    var saving = 0, unowned = 0;
+    actions.forEach(function (a) {
+      if (a.type === 'dados') unowned += a.sortKey * 2; else saving += a.value;
+    });
+    if (saving > 0) return { tier: 3, amount: saving, label: 'até ' + brl.format(saving) + '/mês' };
+    if (unowned > 0) return { tier: 2, amount: unowned, label: brl.format(unowned) + '/mês sem dono' };
+    return { tier: 1, amount: v.cost, label: brl.format(v.cost) + ' na semana' };
+  }
+
   function vehicleRow(v, rank, actions, open, fleetRate) {
     var li = el('li', 'cia-row');
     var details = el('details', 'cia-row-details');
@@ -525,10 +541,12 @@
     summary.appendChild(el('span', 'cia-row-pos', String(rank)));
     var main = el('span', 'cia-row-main');
     main.appendChild(el('span', 'cia-row-name', v.name));
-    main.appendChild(el('span', 'cia-row-meta', hours(v.idleS) + ' parado · ' + pctFmt.format(v.share) + ' do tempo de motor ligado'));
+    var impact = impactOf(v, actions);
+    main.appendChild(el('span', 'cia-row-meta', (impact.tier > 1 ? brl.format(v.cost) + ' na semana · ' : '') +
+      hours(v.idleS) + ' parado · ' + pctFmt.format(v.share) + ' do tempo de motor ligado'));
     summary.appendChild(main);
     var side = el('span', 'cia-row-side');
-    side.appendChild(el('span', 'cia-row-cost', brl.format(v.cost)));
+    side.appendChild(el('span', 'cia-row-cost' + (impact.tier === 1 ? ' cia-row-cost-normal' : ''), impact.label));
     var lead = actions.filter(function (a) { return a.type !== 'dados'; })[0] || actions[0];
     side.appendChild(el('span', 'cia-row-hint' + (lead ? ' cia-row-hint-action' : ''),
       lead ? lead.short + (actions.length > 1 ? ' + ' + (actions.length - 1) : '') : 'Dentro do normal'));
@@ -555,14 +573,11 @@
   function renderTop(s, advice) {
     var byVehicle = {};
     advice.all.forEach(function (a) { (byVehicle[a.vehicleId] = byVehicle[a.vehicleId] || []).push(a); });
-    function priority(v) {
-      return (byVehicle[v.id] || []).reduce(function (x, a) { return x + a.sortKey; }, 0);
-    }
-    // Quem tem ação sugerida vem primeiro, em ordem de valor; depois, os de maior gasto.
+    // Sempre o maior impacto financeiro primeiro: economia possível, depois dinheiro
+    // sem motorista identificado, depois o gasto da semana dos que estão no normal.
     var ordered = s.ranking.slice().sort(function (a, b) {
-      var pa = priority(a), pb = priority(b);
-      if ((pa > 0) !== (pb > 0)) return pb > 0 ? 1 : -1;
-      return pa !== pb ? pb - pa : b.cost - a.cost;
+      var ia = impactOf(a, byVehicle[a.id] || []), ib = impactOf(b, byVehicle[b.id] || []);
+      return ia.tier !== ib.tier ? ib.tier - ia.tier : ib.amount - ia.amount;
     });
     var rows = ordered.slice(0, TOP_VEHICLES);
     var list = $('cia-ranking');
@@ -583,7 +598,7 @@
     else {
       sub = (withAction === 1 ? '1 veículo tem' : withAction + ' veículos têm') + ' ação sugerida';
       sub += value > 0 ? ', que pode recuperar até ' + brl.format(value) + ' por mês.' : '.';
-      sub += ' Eles vêm primeiro, em ordem de valor; depois, os de maior gasto. Clique para ver o porquê.';
+      sub += ' A lista segue o impacto financeiro: primeiro o que dá para recuperar, depois o gasto sem motorista identificado e, por fim, os maiores gastos dentro do normal. Clique para ver o porquê.';
     }
     $('cia-ranking-title').textContent = rows.length < TOP_VEHICLES ? 'Veículos com motor ligado parado' : 'Top ' + TOP_VEHICLES + ' veículos';
     $('cia-ranking-sub').textContent = sub;
@@ -687,7 +702,12 @@
       ? (Math.abs(e.change) < NOISE ? 'Estável em relação à média das 4 semanas anteriores'
         : signedPct.format(e.change) + (e.change > 0 ? ', melhor' : ', pior') + ' que a média das 4 semanas anteriores')
       : '';
-    $('cia-evo-liters').textContent = liters(e.liters);
+    $('cia-evo-liters').textContent = liters(e.liters) + ' de diesel';
+    $('cia-evo-extra').textContent = brl.format(e.extraValue);
+    $('cia-evo-extra-note').textContent = e.worseCount
+      ? 'em ' + (e.worseCount === 1 ? '1 veículo' : e.worseCount + ' veículos') + ' que pioraram contra a própria média' +
+        (e.savedValue > 0 ? '; os que melhoraram economizaram ' + brl.format(e.savedValue) : '')
+      : 'nenhum veículo piorou contra a própria média';
     $('cia-evo-cost').textContent = brl.format(e.cost);
     $('cia-evo-compared').textContent = String(e.compared);
     var labels = e.weeks.map(function (w) { return dayMonth.format(w.start); });
@@ -707,7 +727,7 @@
     $('cia-better-empty').hidden = e.better.length > 0;
     var total = e.worse.reduce(function (x, m) { return x + m.value; }, 0);
     $('cia-worse-sub').textContent = e.worse.length
-      ? 'Juntos, gastaram ' + brl.format(total) + ' a mais nesta semana do que a própria média. Clique para ver as possíveis causas.'
+      ? 'Em ordem de gasto a mais. Juntos, gastaram ' + brl.format(total) + ' a mais nesta semana do que a própria média. Clique para ver as possíveis causas.'
       : '';
     $('cia-evo-content').hidden = false;
   }

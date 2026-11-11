@@ -1,195 +1,177 @@
-/* Combustível IA v0.6 · todas as classes com prefixo cia- (exigência da Geotab) */
+/* Combustível IA v0.6 · todas as classes com prefixo cia- (exigência da Geotab)
+ * Padrão visual estilo Apple: fundo cinza-claro com cards brancos, texto em cinzas
+ * neutros, azul só em destaques, azul-marinho só na marca e nos círculos numerados,
+ * sem bordas em cards, sem sombras, sem gradientes. */
 .cia-root {
-  --cia-ink: #0A1A33;
-  --cia-text: #424245;
-  --cia-muted: #6E6E73;
-  --cia-surface: #F5F5F7;
+  --cia-navy: #0A1A33;       /* marca e círculos numerados; nunca texto corrido */
+  --cia-ink: #1D1D1F;        /* texto principal */
+  --cia-text: #424245;       /* texto de apoio */
+  --cia-muted: #6E6E73;      /* texto secundário: só sobre branco abaixo de 18px */
+  --cia-surface: #F5F5F7;    /* fundo da página */
   --cia-card: #FFFFFF;
-  --cia-accent: #0066CC;
+  --cia-hairline: #D2D2D7;   /* divisores de 1px entre linhas, nunca bordas de card */
+  --cia-rail: #C7C7CC;       /* barras de comparação */
+  --cia-accent: #0066CC;     /* azul de destaque */
   box-sizing: border-box;
   width: 100%;
   min-height: 100%;
   margin: 0;
-  padding: 32px 40px 48px;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  padding: 40px 48px 56px;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: -0.011em;
   color: var(--cia-ink);
   background: var(--cia-surface);
 }
 .cia-root *, .cia-root *::before, .cia-root *::after { box-sizing: inherit; }
-.cia-brand { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; color: var(--cia-ink); }
-.cia-logo-mark { width: 22px; height: 26px; flex: none; }
+
+/* Marca e título */
+.cia-brand { display: flex; align-items: center; gap: 12px; margin: 0 0 28px; font-size: 26px; font-weight: 700; letter-spacing: -0.03em; color: var(--cia-navy); }
+.cia-logo-mark { width: 36px; height: 43px; flex: none; }
 .cia-logo-ia { color: var(--cia-accent); }
-.cia-title { margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
-.cia-subtitle { margin: 6px 0 0; font-size: 15px; color: var(--cia-text); }
-
-.cia-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-  margin-top: 24px;
+.cia-title {
+  margin: 0; font-family: "Inter Display", Inter, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 40px; font-weight: 700; line-height: 1.1; letter-spacing: -0.035em; text-wrap: balance;
 }
-.cia-kpi { background: var(--cia-card); border-radius: 16px; padding: 20px; }
-.cia-kpi-label { margin: 0; font-size: 13px; color: var(--cia-muted); }
-.cia-kpi-value { margin: 6px 0 0; font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
-.cia-kpi-note { margin: 4px 0 0; font-size: 13px; color: var(--cia-muted); }
-.cia-kpi:first-child .cia-kpi-value { color: var(--cia-accent); }
+.cia-subtitle { margin: 8px 0 0; font-size: 17px; color: var(--cia-text); }
 
-.cia-card { background: var(--cia-card); border-radius: 20px; padding: 28px; margin-top: 12px; }
-.cia-card-title { margin: 0; font-size: 20px; font-weight: 600; }
-.cia-card-sub { margin: 6px 0 20px; font-size: 14px; color: var(--cia-muted); }
-
-/* O que fazer esta semana */
-.cia-card-first { margin-top: 24px; }
-.cia-actions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-.cia-action { background: var(--cia-surface); border-radius: 16px; padding: 20px 22px; }
-.cia-action-head { display: grid; grid-template-columns: 28px 1fr auto; column-gap: 12px; align-items: start; }
-.cia-action-pos {
-  width: 28px; height: 28px; border-radius: 14px; background: var(--cia-ink); color: #FFFFFF;
-  font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center;
-}
-.cia-action-titlebox { min-width: 0; }
-.cia-tag { display: inline-block; font-size: 12px; font-weight: 600; color: var(--cia-muted); margin-bottom: 2px; }
-.cia-tag-dados { color: var(--cia-muted); }
-.cia-action-title { margin: 0; font-size: 17px; font-weight: 600; line-height: 1.3; color: var(--cia-ink); }
-.cia-action-value { font-size: 17px; font-weight: 700; color: var(--cia-accent); white-space: nowrap; padding-top: 18px; }
-.cia-action-value-muted { color: var(--cia-muted); font-weight: 600; font-size: 14px; }
-.cia-action-body {
-  display: grid; grid-template-columns: 76px 1fr; gap: 6px 12px;
-  margin: 14px 0 0 40px; font-size: 14px; line-height: 1.45;
-}
-.cia-action-label { font-weight: 600; color: var(--cia-ink); }
-.cia-action-text { margin: 0; color: var(--cia-text); }
-.cia-section-title { margin: 32px 0 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
-.cia-section-title + .cia-kpis { margin-top: 12px; }
-@media (max-width: 640px) {
-  .cia-root { padding: 24px 16px 40px; }
-  .cia-action-head { grid-template-columns: 28px 1fr; }
-  .cia-action-value { grid-column: 2; padding-top: 6px; }
-  .cia-action-body { margin-left: 0; grid-template-columns: 1fr; }
-}
-
-/* Abas */
-.cia-tabs { display: inline-flex; gap: 4px; margin-top: 20px; padding: 4px; background: #E8E8ED; border-radius: 12px; }
+/* Abas (controle segmentado) */
+.cia-tabs { display: inline-flex; gap: 4px; margin-top: 24px; padding: 4px; background: #E8E8ED; border-radius: 12px; }
 .cia-tab {
   border: 0; background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: var(--cia-text);
-  padding: 8px 16px; border-radius: 9px; cursor: pointer;
+  padding: 8px 18px; border-radius: 9px; cursor: pointer;
 }
 .cia-tab[aria-selected="true"] { background: var(--cia-card); color: var(--cia-ink); }
 .cia-tab:focus-visible { outline: 2px solid var(--cia-accent); outline-offset: 2px; }
 
-/* Evolução da frota */
-.cia-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
-.cia-charts .cia-card { margin-top: 12px; }
-.cia-chart { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; height: 180px; }
-.cia-bar-col { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; }
-.cia-bar-value { font-size: 12px; color: var(--cia-muted); text-align: center; white-space: nowrap; }
-.cia-bar-track { flex: 1; display: flex; align-items: flex-end; }
-.cia-bar { width: 100%; background: #C7C7CC; border-radius: 6px 6px 2px 2px; }
-.cia-bar-last .cia-bar { background: var(--cia-accent); }
-.cia-bar-last .cia-bar-value, .cia-bar-last .cia-bar-label { color: var(--cia-ink); font-weight: 600; }
-.cia-bar-label { font-size: 12px; color: var(--cia-muted); text-align: center; }
-.cia-good { color: #1E7A3C; }
-.cia-row:first-child .cia-row-cost.cia-good { color: #1E7A3C; }
-.cia-causes { margin: 0; padding-left: 18px; }
-.cia-causes li + li { margin-top: 4px; }
-
-/* Top 10: uma linha por veículo, detalhe ao clicar */
-.cia-kpis { margin-top: 24px; }
-.cia-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.cia-row-details { background: var(--cia-surface); border-radius: 16px; }
-.cia-row-summary {
-  list-style: none; cursor: pointer; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto 16px;
-  column-gap: 14px; align-items: center; padding: 14px 18px; border-radius: 16px;
-}
-.cia-row-summary::-webkit-details-marker { display: none; }
-.cia-row-summary:hover { background: #ECECF0; }
-.cia-row-summary:focus-visible { outline: 2px solid var(--cia-accent); outline-offset: 2px; }
-.cia-row-pos {
-  width: 28px; height: 28px; border-radius: 14px; background: var(--cia-card); color: var(--cia-ink);
-  font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center;
-}
-.cia-row-main { display: flex; flex-direction: column; min-width: 0; }
-.cia-row-name { font-size: 16px; font-weight: 600; color: var(--cia-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cia-row-meta { font-size: 13px; color: var(--cia-muted); margin-top: 2px; }
-.cia-row-side { display: flex; flex-direction: column; align-items: flex-end; }
-.cia-row-cost { font-size: 18px; font-weight: 700; color: var(--cia-ink); white-space: nowrap; }
-.cia-row:first-child .cia-row-cost { color: var(--cia-accent); }
-.cia-row-hint { font-size: 12px; color: var(--cia-muted); margin-top: 2px; white-space: nowrap; }
-.cia-row-hint-action { color: var(--cia-accent); font-weight: 600; }
-.cia-row-chevron { font-size: 22px; line-height: 1; color: var(--cia-muted); transition: transform .15s ease; justify-self: end; }
-.cia-row-details[open] .cia-row-chevron { transform: rotate(90deg); }
-.cia-row-body { padding: 4px 18px 20px 60px; display: flex; flex-direction: column; gap: 16px; }
-.cia-row-action { background: var(--cia-card); border-radius: 14px; padding: 16px 18px; }
-.cia-row-action .cia-action-body { margin: 10px 0 0; grid-template-columns: 128px 1fr; }
-.cia-row-ok, .cia-row-fuel { margin: 0; font-size: 14px; line-height: 1.45; color: var(--cia-text); }
-.cia-row-action .cia-row-ok { margin-top: 6px; }
-.cia-row-label { margin: 0; font-size: 13px; font-weight: 600; color: var(--cia-ink); }
-.cia-row-drivers .cia-drivers { margin-top: 8px; }
-@media (prefers-reduced-motion: reduce) { .cia-row-chevron { transition: none; } }
-@media (max-width: 640px) {
-  .cia-row-summary { grid-template-columns: 28px minmax(0, 1fr) auto; }
-  .cia-row-chevron { display: none; }
-  .cia-row-body { padding: 4px 14px 16px; }
-  .cia-row-action .cia-action-body { grid-template-columns: 1fr; }
-}
-
-/* Um bloco por veículo */
-.cia-vehicles { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-.cia-vehicle { background: var(--cia-surface); border-radius: 16px; padding: 18px 20px; }
-.cia-vehicle-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
-.cia-vehicle-name { font-size: 16px; font-weight: 600; color: var(--cia-ink); }
-.cia-vehicle-cost { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
-.cia-vehicle:first-child .cia-vehicle-cost { color: var(--cia-accent); }
-.cia-vehicle-share { margin: 2px 0 0; font-size: 13px; color: var(--cia-muted); }
-.cia-vehicle-unknown { margin: 8px 0 0 40px; font-size: 13px; color: var(--cia-muted); }
-
-/* Motoristas dentro do veículo */
-.cia-drivers { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.cia-driver {
-  display: grid;
-  grid-template-columns: 28px 1fr auto;
-  grid-template-areas: "pos name share" "pos detail share";
-  column-gap: 12px;
-  align-items: center;
-}
-.cia-driver-pos {
-  grid-area: pos; width: 24px; height: 24px; border-radius: 12px;
-  background: var(--cia-card); color: var(--cia-ink); font-size: 12px; font-weight: 600;
-  display: flex; align-items: center; justify-content: center;
-}
-.cia-driver-name { grid-area: name; font-size: 14px; font-weight: 500; color: var(--cia-ink); }
-.cia-driver-detail { grid-area: detail; font-size: 12px; color: var(--cia-muted); }
-.cia-driver-share { grid-area: share; font-size: 16px; font-weight: 600; color: var(--cia-ink); }
-
 /* Preço do diesel */
-.cia-price { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 16px; font-size: 14px; color: var(--cia-text); }
+.cia-price { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 20px; font-size: 14px; color: var(--cia-text); }
 .cia-price-label { font-weight: 600; color: var(--cia-ink); }
-.cia-price-field { display: inline-flex; align-items: center; gap: 6px; background: var(--cia-card); border-radius: 10px; padding: 6px 12px; }
-.cia-price-unit { color: var(--cia-muted); }
+.cia-price-field { display: inline-flex; align-items: center; gap: 6px; background: var(--cia-card); border-radius: 12px; padding: 8px 14px; }
+.cia-price-unit { color: var(--cia-text); }
 .cia-price-input {
   width: 64px; border: 0; outline: 0; background: transparent; padding: 0;
   font: inherit; font-weight: 600; color: var(--cia-ink); text-align: right;
 }
-.cia-price-field:focus-within { box-shadow: 0 0 0 2px var(--cia-accent); }
-.cia-price-source { font-size: 13px; color: var(--cia-muted); }
+.cia-price-field:focus-within { outline: 2px solid var(--cia-accent); outline-offset: 2px; }
+.cia-price-source { font-size: 13px; color: var(--cia-text); }
 
-/* Check-up de dados */
-.cia-pillars { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-.cia-pillar { background: var(--cia-surface); border-radius: 16px; padding: 18px 20px; }
+/* Números-destaque */
+.cia-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 24px; }
+.cia-kpi { background: var(--cia-card); border-radius: 24px; padding: 24px 28px; }
+.cia-kpi-label { margin: 0; font-size: 14px; color: var(--cia-muted); }
+.cia-kpi-value {
+  margin: 8px 0 0; font-family: "Inter Display", Inter, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 34px; font-weight: 700; letter-spacing: -0.035em; line-height: 1.05; color: var(--cia-ink);
+}
+.cia-kpi-note { margin: 6px 0 0; font-size: 13px; line-height: 1.4; color: var(--cia-muted); }
+.cia-kpi:first-child .cia-kpi-value { color: var(--cia-accent); }
+
+/* Cards */
+.cia-card { background: var(--cia-card); border-radius: 24px; padding: 36px 40px; margin-top: 12px; }
+.cia-card-title { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+.cia-card-sub { margin: 6px 0 20px; font-size: 15px; line-height: 1.45; color: var(--cia-muted); }
+
+/* Lista por veículo: linhas separadas por divisores finos, detalhe ao clicar */
+.cia-rows { list-style: none; margin: 0; padding: 0; }
+.cia-row + .cia-row { border-top: 1px solid var(--cia-hairline); }
+.cia-row-summary {
+  list-style: none; cursor: pointer; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto 16px;
+  column-gap: 16px; align-items: center; padding: 16px 12px; margin: 0 -12px; border-radius: 14px;
+}
+.cia-row-summary::-webkit-details-marker { display: none; }
+.cia-row-summary:hover { background: var(--cia-surface); }
+.cia-row-summary:focus-visible { outline: 2px solid var(--cia-accent); outline-offset: 2px; }
+.cia-row-pos {
+  width: 28px; height: 28px; border-radius: 14px; background: var(--cia-navy); color: #FFFFFF;
+  font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+}
+.cia-row-main { display: flex; flex-direction: column; min-width: 0; }
+.cia-row-name { font-size: 17px; font-weight: 600; color: var(--cia-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cia-row-meta { font-size: 13px; color: var(--cia-muted); margin-top: 2px; }
+.cia-row-side { display: flex; flex-direction: column; align-items: flex-end; }
+.cia-row-cost { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; color: var(--cia-ink); white-space: nowrap; }
+.cia-row:first-child .cia-row-cost { color: var(--cia-accent); }
+.cia-row-cost-normal, .cia-row:first-child .cia-row-cost-normal { font-size: 15px; font-weight: 600; color: var(--cia-text); }
+.cia-good, .cia-row:first-child .cia-good { color: var(--cia-accent); }
+.cia-row-hint { font-size: 13px; color: var(--cia-muted); margin-top: 2px; white-space: nowrap; }
+.cia-row-hint-action { color: var(--cia-accent); font-weight: 600; }
+.cia-row-chevron { font-size: 22px; line-height: 1; color: var(--cia-muted); transition: transform .15s ease; justify-self: end; }
+.cia-row-details[open] .cia-row-chevron { transform: rotate(90deg); }
+.cia-row-body { padding: 4px 0 24px 44px; display: flex; flex-direction: column; gap: 16px; }
+
+/* Bloco de ação dentro do veículo (cinza-claro dentro do card branco) */
+.cia-row-action { background: var(--cia-surface); border-radius: 16px; padding: 20px 24px; }
+.cia-tag { display: inline-block; font-size: 13px; font-weight: 600; color: var(--cia-text); }
+.cia-action-title { margin: 2px 0 0; font-size: 18px; font-weight: 600; line-height: 1.3; letter-spacing: -0.02em; color: var(--cia-ink); }
+.cia-action-body { display: grid; grid-template-columns: 136px 1fr; gap: 8px 16px; margin: 14px 0 0; font-size: 15px; line-height: 1.45; }
+.cia-action-label { font-weight: 600; color: var(--cia-ink); }
+.cia-action-text { margin: 0; color: var(--cia-text); }
+.cia-causes { margin: 0; padding-left: 18px; }
+.cia-causes li + li { margin-top: 4px; }
+.cia-row-ok { margin: 6px 0 0; font-size: 15px; line-height: 1.45; color: var(--cia-text); }
+.cia-row-fuel { margin: 0; font-size: 14px; line-height: 1.45; color: var(--cia-text); }
+.cia-row-label { margin: 0; font-size: 14px; font-weight: 600; color: var(--cia-ink); }
+
+/* Motoristas dentro do veículo */
+.cia-drivers { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.cia-driver {
+  display: grid; grid-template-columns: 28px 1fr auto;
+  grid-template-areas: "pos name share" "pos detail share";
+  column-gap: 12px; align-items: center;
+}
+.cia-driver-pos {
+  grid-area: pos; width: 24px; height: 24px; border-radius: 12px;
+  background: var(--cia-surface); color: var(--cia-ink); font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+}
+.cia-driver-name { grid-area: name; font-size: 15px; font-weight: 500; color: var(--cia-ink); }
+.cia-driver-detail { grid-area: detail; font-size: 13px; color: var(--cia-muted); }
+.cia-driver-share { grid-area: share; font-size: 16px; font-weight: 600; color: var(--cia-ink); }
+.cia-vehicle-unknown { margin: 10px 0 0 40px; font-size: 13px; color: var(--cia-muted); }
+
+/* Evolução da frota */
+.cia-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.cia-chart { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; height: 190px; }
+.cia-bar-col { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; }
+.cia-bar-value { font-size: 12px; color: var(--cia-muted); text-align: center; white-space: nowrap; }
+.cia-bar-track { flex: 1; display: flex; align-items: flex-end; }
+.cia-bar { width: 100%; background: var(--cia-rail); border-radius: 8px 8px 3px 3px; }
+.cia-bar-last .cia-bar { background: var(--cia-accent); }
+.cia-bar-last .cia-bar-value, .cia-bar-last .cia-bar-label { color: var(--cia-ink); font-weight: 600; }
+.cia-bar-label { font-size: 12px; color: var(--cia-muted); text-align: center; }
+
+/* Check-up de dados: três colunas sobre o branco, separadas por espaço */
+.cia-pillars { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 32px; }
+.cia-pillar { border-top: 1px solid var(--cia-hairline); padding-top: 16px; }
 .cia-pillar-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.cia-pillar-name { font-size: 16px; font-weight: 600; }
-.cia-pillar-question { margin: 4px 0 12px; font-size: 13px; color: var(--cia-muted); }
+.cia-pillar-name { font-size: 17px; font-weight: 600; }
+.cia-pillar-question { margin: 4px 0 12px; font-size: 14px; color: var(--cia-muted); }
 .cia-badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
 .cia-badge-ok { background: #E6F0FA; color: var(--cia-accent); }
-.cia-badge-partial { background: var(--cia-card); color: var(--cia-ink); }
-.cia-badge-none { background: var(--cia-card); color: var(--cia-muted); }
-.cia-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.cia-check { display: flex; gap: 8px; font-size: 13px; color: var(--cia-muted); }
+.cia-badge-partial { background: var(--cia-surface); color: var(--cia-ink); }
+.cia-badge-none { background: var(--cia-surface); color: var(--cia-text); }
+.cia-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cia-check { display: flex; gap: 8px; font-size: 14px; line-height: 1.4; color: var(--cia-muted); }
 .cia-check-ok { color: var(--cia-text); }
 .cia-check-mark { width: 14px; flex: none; font-weight: 700; }
 .cia-check-ok .cia-check-mark { color: var(--cia-accent); }
 .cia-check-detail { color: var(--cia-muted); }
 
 .cia-note { margin: 16px 0 0; font-size: 13px; line-height: 1.5; color: var(--cia-muted); }
-.cia-status { margin: 20px 0 0; font-size: 14px; color: var(--cia-muted); }
+.cia-status { margin: 20px 0 0; font-size: 15px; color: var(--cia-text); }
 .cia-status:empty { display: none; }
+
+@media (prefers-reduced-motion: reduce) { .cia-row-chevron { transition: none; } }
+@media (max-width: 640px) {
+  .cia-root { padding: 24px 16px 40px; }
+  .cia-brand { font-size: 22px; margin-bottom: 20px; }
+  .cia-logo-mark { width: 30px; height: 36px; }
+  .cia-title { font-size: 30px; }
+  .cia-card { padding: 24px 20px; }
+  .cia-row-summary { grid-template-columns: 28px minmax(0, 1fr) auto; }
+  .cia-row-chevron { display: none; }
+  .cia-row-body { padding: 4px 0 20px; }
+  .cia-action-body { grid-template-columns: 1fr; gap: 2px; }
+  .cia-action-label { margin-top: 8px; }
+}
+.cia-note-page { color: var(--cia-text); }
