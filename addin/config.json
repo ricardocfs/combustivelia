@@ -1,7 +1,7 @@
 {
   "name": "Combustível IA",
   "supportEmail": "suporte@combustivelia.com.br",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "items": [
     {
       "url": "https://ricardocfs.github.io/combustivelia/addin/combustivelia.html",
@@ -10,7 +10,8 @@
         "pt-BR": "Combustível IA",
         "en": "Combustível IA",
         "es": "Combustible IA"
-      }
+      },
+      "icon": "https://ricardocfs.github.io/combustivelia/addin/simbolo.svg"
     }
   ],
   "files": {}

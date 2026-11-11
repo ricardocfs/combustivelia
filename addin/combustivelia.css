@@ -5,7 +5,7 @@
   --cia-muted: #6E6E73;
   --cia-surface: #F5F5F7;
   --cia-card: #FFFFFF;
-  --cia-accent: #0071E3;
+  --cia-accent: #0066CC;
   box-sizing: border-box;
   width: 100%;
   min-height: 100%;
@@ -16,7 +16,9 @@
   background: var(--cia-surface);
 }
 .cia-root *, .cia-root *::before, .cia-root *::after { box-sizing: inherit; }
-.cia-brand { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--cia-muted); }
+.cia-brand { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; color: var(--cia-ink); }
+.cia-logo-mark { width: 22px; height: 26px; flex: none; }
+.cia-logo-ia { color: var(--cia-accent); }
 .cia-title { margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
 .cia-subtitle { margin: 6px 0 0; font-size: 15px; color: var(--cia-text); }
 
@@ -113,7 +115,7 @@
 .cia-pillar-name { font-size: 16px; font-weight: 600; }
 .cia-pillar-question { margin: 4px 0 12px; font-size: 13px; color: var(--cia-muted); }
 .cia-badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
-.cia-badge-ok { background: #E8F1FC; color: var(--cia-accent); }
+.cia-badge-ok { background: #E6F0FA; color: var(--cia-accent); }
 .cia-badge-partial { background: var(--cia-card); color: var(--cia-ink); }
 .cia-badge-none { background: var(--cia-card); color: var(--cia-muted); }
 .cia-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
