@@ -1,4 +1,4 @@
-/* Combustível IA · todas as classes com prefixo cia- (exigência da Geotab) */
+/* Combustível IA v0.3 · todas as classes com prefixo cia- (exigência da Geotab) */
 .cia-root {
   --cia-ink: #0A1A33;
   --cia-text: #424245;
@@ -7,9 +7,10 @@
   --cia-card: #FFFFFF;
   --cia-accent: #0071E3;
   box-sizing: border-box;
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 32px 24px 48px;
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 32px 40px 48px;
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
   color: var(--cia-ink);
   background: var(--cia-surface);
@@ -28,6 +29,7 @@
 .cia-kpi { background: var(--cia-card); border-radius: 16px; padding: 20px; }
 .cia-kpi-label { margin: 0; font-size: 13px; color: var(--cia-muted); }
 .cia-kpi-value { margin: 6px 0 0; font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
+.cia-kpi-note { margin: 4px 0 0; font-size: 13px; color: var(--cia-muted); }
 .cia-kpi:first-child .cia-kpi-value { color: var(--cia-accent); }
 
 .cia-card { background: var(--cia-card); border-radius: 20px; padding: 28px; margin-top: 12px; }
@@ -39,8 +41,8 @@
 .cia-vehicle { background: var(--cia-surface); border-radius: 16px; padding: 18px 20px; }
 .cia-vehicle-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
 .cia-vehicle-name { font-size: 16px; font-weight: 600; color: var(--cia-ink); }
-.cia-vehicle-hours { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
-.cia-vehicle:first-child .cia-vehicle-hours { color: var(--cia-accent); }
+.cia-vehicle-cost { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
+.cia-vehicle:first-child .cia-vehicle-cost { color: var(--cia-accent); }
 .cia-vehicle-share { margin: 2px 0 0; font-size: 13px; color: var(--cia-muted); }
 .cia-vehicle-unknown { margin: 10px 0 0 40px; font-size: 13px; color: var(--cia-muted); }
 
@@ -60,7 +62,36 @@
 }
 .cia-driver-name { grid-area: name; font-size: 14px; font-weight: 500; color: var(--cia-ink); }
 .cia-driver-detail { grid-area: detail; font-size: 12px; color: var(--cia-muted); }
-.cia-driver-share { grid-area: share; font-size: 17px; font-weight: 600; color: var(--cia-ink); }
+.cia-driver-share { grid-area: share; font-size: 16px; font-weight: 600; color: var(--cia-ink); }
+
+/* Preço do diesel */
+.cia-price { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 16px; font-size: 14px; color: var(--cia-text); }
+.cia-price-label { font-weight: 600; color: var(--cia-ink); }
+.cia-price-field { display: inline-flex; align-items: center; gap: 6px; background: var(--cia-card); border-radius: 10px; padding: 6px 12px; }
+.cia-price-unit { color: var(--cia-muted); }
+.cia-price-input {
+  width: 64px; border: 0; outline: 0; background: transparent; padding: 0;
+  font: inherit; font-weight: 600; color: var(--cia-ink); text-align: right;
+}
+.cia-price-field:focus-within { box-shadow: 0 0 0 2px var(--cia-accent); }
+.cia-price-source { font-size: 13px; color: var(--cia-muted); }
+
+/* Check-up de dados */
+.cia-pillars { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.cia-pillar { background: var(--cia-surface); border-radius: 16px; padding: 18px 20px; }
+.cia-pillar-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.cia-pillar-name { font-size: 16px; font-weight: 600; }
+.cia-pillar-question { margin: 4px 0 12px; font-size: 13px; color: var(--cia-muted); }
+.cia-badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.cia-badge-ok { background: #E8F1FC; color: var(--cia-accent); }
+.cia-badge-partial { background: var(--cia-card); color: var(--cia-ink); }
+.cia-badge-none { background: var(--cia-card); color: var(--cia-muted); }
+.cia-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cia-check { display: flex; gap: 8px; font-size: 13px; color: var(--cia-muted); }
+.cia-check-ok { color: var(--cia-text); }
+.cia-check-mark { width: 14px; flex: none; font-weight: 700; }
+.cia-check-ok .cia-check-mark { color: var(--cia-accent); }
+.cia-check-detail { color: var(--cia-muted); }
 
 .cia-note { margin: 16px 0 0; font-size: 13px; line-height: 1.5; color: var(--cia-muted); }
 .cia-status { margin: 20px 0 0; font-size: 14px; color: var(--cia-muted); }

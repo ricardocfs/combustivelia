@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Combustível IA</title>
-  <link rel="stylesheet" href="combustivelia.css">
+  <link rel="stylesheet" href="combustivelia.css?v=0.3.0">
 </head>
 <body>
   <main id="combustivelia" class="cia-root" aria-live="polite">
@@ -13,28 +13,53 @@
       <h1 class="cia-title">Motor ligado parado</h1>
       <p class="cia-subtitle" id="cia-period">Últimos 7 dias</p>
     </header>
+
     <section class="cia-kpis" id="cia-kpis" hidden>
+      <div class="cia-kpi">
+        <p class="cia-kpi-label">Custo do motor ligado parado</p>
+        <p class="cia-kpi-value" id="cia-kpi-cost">—</p>
+      </div>
+      <div class="cia-kpi">
+        <p class="cia-kpi-label">Diesel queimado parado</p>
+        <p class="cia-kpi-value" id="cia-kpi-liters">—</p>
+      </div>
       <div class="cia-kpi">
         <p class="cia-kpi-label">Horas com motor ligado parado</p>
         <p class="cia-kpi-value" id="cia-kpi-hours">—</p>
-      </div>
-      <div class="cia-kpi">
-        <p class="cia-kpi-label">Do tempo de motor ligado</p>
-        <p class="cia-kpi-value" id="cia-kpi-share">—</p>
+        <p class="cia-kpi-note" id="cia-kpi-share"></p>
       </div>
       <div class="cia-kpi">
         <p class="cia-kpi-label">Veículos analisados</p>
         <p class="cia-kpi-value" id="cia-kpi-vehicles">—</p>
       </div>
     </section>
+
+    <div class="cia-price">
+      <label class="cia-price-label" for="cia-price">Preço do diesel</label>
+      <span class="cia-price-field">
+        <span class="cia-price-unit">R$</span>
+        <input class="cia-price-input" id="cia-price" type="text" inputmode="decimal" autocomplete="off" value="7,32" aria-describedby="cia-price-source">
+        <span class="cia-price-unit">/ litro</span>
+      </span>
+      <span class="cia-price-source" id="cia-price-source"></span>
+    </div>
+
     <section class="cia-card" id="cia-ranking-card" hidden>
       <h2 class="cia-card-title">Onde agir primeiro</h2>
-      <p class="cia-card-sub">Veículos com mais tempo de motor ligado parado e os motoristas que mais contribuíram em cada um.</p>
+      <p class="cia-card-sub">Veículos que mais gastaram com motor ligado parado e os motoristas que mais contribuíram em cada um.</p>
       <ol class="cia-vehicles" id="cia-ranking"></ol>
+      <p class="cia-note" id="cia-basis"></p>
       <p class="cia-note">Parte do tempo parado pode ser da operação, como espera para carregar ou pernoite. Use como ponto de partida para a conversa, não como punição.</p>
     </section>
+
+    <section class="cia-card" id="cia-checkup-card" hidden>
+      <h2 class="cia-card-title">Check-up dos dados da frota</h2>
+      <p class="cia-card-sub" id="cia-checkup-sub"></p>
+      <div class="cia-pillars" id="cia-checkup"></div>
+    </section>
+
     <p class="cia-status" id="cia-status">Carregando dados da frota…</p>
   </main>
-  <script src="combustivelia.js"></script>
+  <script src="combustivelia.js?v=0.3.0"></script>
 </body>
 </html>
