@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '0.6.2';
+  var VERSION = '0.6.3';
   var DAYS = 7;
   var TOP_VEHICLES = 10;
   var TOP_DRIVERS = 3;
@@ -204,11 +204,14 @@
           if (!(d.engineS > 0) || d.cost < MIN_WEEK_COST || d.longIdleS / d.idleS >= 0.5) return;
           var rate = d.idleS / d.engineS;
           var peersEngine = v.engineS - d.engineS;
-          var peers = peersEngine >= 2 * 3600;
-          var ref = peers ? (v.idleS - d.idleS) / peersEngine : fleetRate;
+          // Comparação justa: contra os colegas do mesmo caminhão, mas nunca abaixo da média
+          // da frota. Quem fica parado menos que a média da frota não é apontado.
+          var peerRate = peersEngine >= 2 * 3600 ? (v.idleS - d.idleS) / peersEngine : -1;
+          var peers = peerRate >= fleetRate;
+          var ref = peers ? peerRate : fleetRate;
           if (!(ref > 0) || rate < OUTLIER * ref) return;
           var value = money(d.idleS - ref * d.engineS);
-          if (!best || value > best.value) best = { d: d, rate: rate, ref: ref, peers: peers, value: value };
+          if (!best || value > best.value) best = { d: d, rate: rate, ref: ref, peers: peers, peerRate: peerRate, value: value };
         });
         if (best) {
           actions.push({
@@ -216,7 +219,9 @@
             valueLabel: 'até ' + brl.format(best.value) + '/mês',
             title: 'Conversar com ' + best.d.name + ' sobre o motor ligado parado',
             why: 'No ' + v.name + ', ' + best.d.name + ' ficou com o motor ligado parado ' + pctFmt.format(best.rate) + ' do tempo; ' +
-              (best.peers ? 'os outros motoristas do mesmo caminhão ficam em ' : 'a média da frota é ') + pctFmt.format(best.ref) +
+              (best.peers ? 'os outros motoristas do mesmo caminhão ficam em ' + pctFmt.format(best.ref)
+                : 'a média da frota é ' + pctFmt.format(best.ref) +
+                  (best.peerRate >= 0 ? ' e os outros motoristas do mesmo caminhão ficam em ' + pctFmt.format(best.peerRate) : '')) +
               '. Foram ' + hours(best.d.idleS) + ' e ' + brl.format(best.d.cost) + ' nesta semana.',
             check: 'Pergunte se houve espera para carregar, descarregar ou pernoite. Se houve, o problema é da operação, não do motorista.',
             todo: 'Se não houve espera, combine desligar o motor nas paradas e acompanhe aqui na próxima semana.'

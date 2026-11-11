@@ -93,7 +93,7 @@
 .cia-row:first-child .cia-row-cost { color: var(--cia-accent); }
 .cia-row-cost-normal, .cia-row:first-child .cia-row-cost-normal { font-size: 15px; font-weight: 600; color: var(--cia-text); }
 .cia-good, .cia-row:first-child .cia-good { color: var(--cia-accent); }
-.cia-row-hint { font-size: 13px; color: var(--cia-muted); margin-top: 2px; white-space: nowrap; }
+.cia-row-hint { font-size: 13px; color: var(--cia-muted); margin-top: 2px; white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
 .cia-row-hint-action { color: var(--cia-accent); font-weight: 600; }
 .cia-row-chevron { font-size: 22px; line-height: 1; color: var(--cia-muted); transition: transform .15s ease; justify-self: end; }
 .cia-row-details[open] .cia-row-chevron { transform: rotate(90deg); }
