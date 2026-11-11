@@ -1,4 +1,4 @@
-/* Combustível IA · Add-In de página para o MyGeotab (versão 0.4)
+/* Combustível IA · Add-In de página para o MyGeotab (versão 0.5)
  * Abre com "O que fazer esta semana": poucas ações, cada uma com por quê, o que
  * verificar, o que fazer e quanto vale. Depois, motor ligado parado por veículo, em horas, litros e R$, com os 3 motoristas
  * que mais contribuíram em cada veículo. Check-up de dados: quais frentes de
@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '0.4.1';
+  var VERSION = '0.5.0';
   var DAYS = 7;
   var TOP_VEHICLES = 10;
   var TOP_DRIVERS = 3;
@@ -189,7 +189,7 @@
       if (longShare >= 0.5) {
         var opValue = money(v.longIdleS);
         actions.push({
-          type: 'operacao', tag: 'Operação', vehicleId: v.id, value: opValue, sortKey: opValue,
+          type: 'operacao', tag: 'Operação', short: 'Ver onde ele espera', vehicleId: v.id, value: opValue, sortKey: opValue,
           valueLabel: 'até ' + brl.format(opValue) + '/mês',
           title: 'Descobrir onde o ' + v.name + ' espera com o motor ligado',
           why: pctFmt.format(longShare) + ' do tempo parado dele foi em viagens com mais de 1 hora parada (' + hours(v.longIdleS) +
@@ -212,7 +212,7 @@
         });
         if (best) {
           actions.push({
-            type: 'conducao', tag: 'Condução', vehicleId: v.id, value: best.value, sortKey: best.value,
+            type: 'conducao', tag: 'Condução', short: 'Falar com ' + best.d.name, vehicleId: v.id, value: best.value, sortKey: best.value,
             valueLabel: 'até ' + brl.format(best.value) + '/mês',
             title: 'Conversar com ' + best.d.name + ' sobre o motor ligado parado',
             why: 'No ' + v.name + ', ' + best.d.name + ' ficou com o motor ligado parado ' + pctFmt.format(best.rate) + ' do tempo; ' +
@@ -225,7 +225,7 @@
           // Caminhão: todos que dirigem ficam parados demais, sem esperas longas
           var vValue = money(v.idleS - fleetRate * v.engineS);
           actions.push({
-            type: 'equipe', tag: 'Condução', vehicleId: v.id, value: vValue, sortKey: vValue,
+            type: 'equipe', tag: 'Condução', short: 'Regra para a equipe', vehicleId: v.id, value: vValue, sortKey: vValue,
             valueLabel: 'até ' + brl.format(vValue) + '/mês',
             title: 'Combinar uma regra de motor parado para o ' + v.name,
             why: 'O ' + v.name + ' fica com o motor ligado parado ' + pctFmt.format(v.share) + ' do tempo, contra ' + pctFmt.format(fleetRate) +
@@ -241,7 +241,7 @@
       if (v.unknownShare >= 0.3 && unknownCost >= MIN_WEEK_COST) {
         var uValue = unknownCost * monthFactor;
         actions.push({
-          type: 'dados', tag: 'Dados', vehicleId: v.id, value: 0, sortKey: uValue * 0.5,
+          type: 'dados', tag: 'Dados', short: 'Identificar motorista', vehicleId: v.id, value: 0, sortKey: uValue * 0.5,
           valueLabel: brl.format(uValue) + '/mês sem dono',
           title: 'Identificar quem dirige o ' + v.name,
           why: pctFmt.format(v.unknownShare) + ' do tempo parado dele (' + brl.format(unknownCost) +
@@ -255,7 +255,8 @@
     actions.sort(function (a, b) { return b.sortKey - a.sortKey; });
     var top = actions.slice(0, MAX_ACTIONS);
     return {
-      actions: top,
+      actions: top,                 // as que mais valem (relatório por e-mail)
+      all: actions,                 // todas, para mostrar dentro de cada veículo
       monthlyValue: top.reduce(function (sum, a) { return sum + a.value; }, 0)
     };
   }
@@ -344,16 +345,9 @@
   }
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
-  function vehicleItem(v) {
-    var li = el('li', 'cia-vehicle');
-    var head = el('div', 'cia-vehicle-head');
-    head.appendChild(el('span', 'cia-vehicle-name', v.name));
-    head.appendChild(el('span', 'cia-vehicle-cost', brl.format(v.cost)));
-    li.appendChild(head);
-    var fuelText = (v.estimated ? '≈ ' + liters(v.liters) + ' estimados' : liters(v.liters));
-    li.appendChild(el('p', 'cia-vehicle-share',
-      hours(v.idleS) + ' parado · ' + fuelText + ' · ' + pctFmt.format(v.share) + ' do tempo de motor ligado'));
-
+  function driversBlock(v) {
+    var box = el('div', 'cia-row-drivers');
+    box.appendChild(el('p', 'cia-row-label', 'Quem dirigia quando ficou parado'));
     if (v.drivers.length) {
       var list = el('ol', 'cia-drivers');
       v.drivers.forEach(function (d, i) {
@@ -365,46 +359,83 @@
         item.appendChild(el('span', 'cia-driver-share', brl.format(d.cost)));
         list.appendChild(item);
       });
-      li.appendChild(list);
+      box.appendChild(list);
     }
-    if (v.unknownShare > 0) {
-      li.appendChild(el('p', 'cia-vehicle-unknown', pctFmt.format(v.unknownShare) + ' sem motorista identificado'));
-    }
-    return li;
+    if (v.unknownShare > 0) box.appendChild(el('p', 'cia-vehicle-unknown', pctFmt.format(v.unknownShare) + ' sem motorista identificado'));
+    return box;
   }
 
-  function actionItem(a, i) {
-    var li = el('li', 'cia-action');
-    var head = el('div', 'cia-action-head');
-    head.appendChild(el('span', 'cia-action-pos', String(i + 1)));
-    var titleBox = el('div', 'cia-action-titlebox');
-    titleBox.appendChild(el('span', 'cia-tag cia-tag-' + a.type, a.tag));
-    titleBox.appendChild(el('p', 'cia-action-title', a.title));
-    head.appendChild(titleBox);
-    head.appendChild(el('span', 'cia-action-value' + (a.type === 'dados' ? ' cia-action-value-muted' : ''), a.valueLabel));
-    li.appendChild(head);
+  function actionBlock(a) {
+    var box = el('div', 'cia-row-action');
+    box.appendChild(el('span', 'cia-tag cia-tag-' + a.type, a.tag));
+    box.appendChild(el('p', 'cia-action-title', a.title));
     var body = el('dl', 'cia-action-body');
-    [['Por quê', a.why], ['Verifique', a.check], ['Faça', a.todo]].forEach(function (pair) {
+    [['Por quê', a.why], ['Verifique', a.check], ['Sugestão de ação', a.todo],
+     [a.type === 'dados' ? 'Sem dono' : 'Economia possível', a.valueLabel]].forEach(function (pair) {
       body.appendChild(el('dt', 'cia-action-label', pair[0]));
       body.appendChild(el('dd', 'cia-action-text', pair[1]));
     });
-    li.appendChild(body);
+    box.appendChild(body);
+    return box;
+  }
+
+  /** Uma linha por veículo: o essencial à vista; o porquê, o que verificar e a
+   *  sugestão de ação abrem com um clique. */
+  function vehicleRow(v, rank, actions, open) {
+    var li = el('li', 'cia-row');
+    var details = el('details', 'cia-row-details');
+    if (open) details.open = true;
+    var summary = el('summary', 'cia-row-summary');
+    summary.appendChild(el('span', 'cia-row-pos', String(rank)));
+    var main = el('span', 'cia-row-main');
+    main.appendChild(el('span', 'cia-row-name', v.name));
+    main.appendChild(el('span', 'cia-row-meta', hours(v.idleS) + ' parado · ' + pctFmt.format(v.share) + ' do tempo de motor ligado'));
+    summary.appendChild(main);
+    var side = el('span', 'cia-row-side');
+    side.appendChild(el('span', 'cia-row-cost', brl.format(v.cost)));
+    var lead = actions.filter(function (a) { return a.type !== 'dados'; })[0] || actions[0];
+    side.appendChild(el('span', 'cia-row-hint' + (lead ? ' cia-row-hint-action' : ''),
+      lead ? lead.short + (actions.length > 1 ? ' + ' + (actions.length - 1) : '') : 'Dentro do normal'));
+    summary.appendChild(side);
+    summary.appendChild(el('span', 'cia-row-chevron', '›'));
+    details.appendChild(summary);
+
+    var body = el('div', 'cia-row-body');
+    if (actions.length) actions.forEach(function (a) { body.appendChild(actionBlock(a)); });
+    else body.appendChild(el('p', 'cia-row-ok', 'Sem ação sugerida: o tempo parado deste veículo está dentro do normal da frota.'));
+    var fuelText = v.estimated ? '≈ ' + liters(v.liters) + ' estimados' : liters(v.liters) + ' medidos pelo veículo';
+    body.appendChild(el('p', 'cia-row-fuel', 'Diesel queimado parado: ' + fuelText + '.'));
+    body.appendChild(driversBlock(v));
+    details.appendChild(body);
+    li.appendChild(details);
     return li;
   }
 
-  function renderActions(advice) {
-    var list = $('cia-actions');
+  function renderTop(s, advice) {
+    var byVehicle = {};
+    advice.all.forEach(function (a) { (byVehicle[a.vehicleId] = byVehicle[a.vehicleId] || []).push(a); });
+    var rows = s.ranking.slice(0, TOP_VEHICLES);
+    var list = $('cia-ranking');
     clear(list);
-    var n = advice.actions.length;
+    var withAction = 0, value = 0, opened = false;
+    rows.forEach(function (v, i) {
+      var acts = byVehicle[v.id] || [];
+      if (acts.length) withAction += 1;
+      acts.forEach(function (a) { value += a.value; });
+      var open = !opened && acts.length > 0;
+      if (open) opened = true;
+      list.appendChild(vehicleRow(v, i + 1, acts, open));
+    });
     var sub;
-    if (n === 0) sub = 'Nenhuma ação urgente: o motor ligado parado está dentro do normal da frota.';
+    if (!rows.length) sub = '';
+    else if (!withAction) sub = 'Nenhuma ação urgente: o motor ligado parado está dentro do normal da frota.';
     else {
-      sub = (n === 1 ? '1 ação' : n + ' ações') + ', em ordem de valor.';
-      if (advice.monthlyValue > 0) sub += ' Juntas, podem recuperar até ' + brl.format(advice.monthlyValue) + ' por mês.';
+      sub = (withAction === 1 ? '1 veículo tem' : withAction + ' veículos têm') + ' ação sugerida';
+      sub += value > 0 ? ', que pode recuperar até ' + brl.format(value) + ' por mês.' : '.';
+      sub += ' Clique em um veículo para ver o porquê e o que fazer.';
     }
-    $('cia-actions-sub').textContent = sub;
-    advice.actions.forEach(function (a, i) { list.appendChild(actionItem(a, i)); });
-    $('cia-actions-card').hidden = false;
+    $('cia-ranking-title').textContent = rows.length < TOP_VEHICLES ? 'Veículos com motor ligado parado' : 'Top ' + TOP_VEHICLES + ' veículos';
+    $('cia-ranking-sub').textContent = sub;
   }
 
   var STATUS_TEXT = { ok: 'Disponível', partial: 'Parcial', none: 'Sem dados' };
@@ -443,7 +474,6 @@
     if (!last) return;
     var price = readPrice();
     var s = valueIdle(last.summary, last.fuel, price);
-    renderActions(advise(s, DAYS));
     var dateFmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' });
     $('cia-period').textContent = 'De ' + dateFmt.format(last.start) + ' a ' + dateFmt.format(last.end);
     $('cia-kpi-cost').textContent = brl.format(s.totalCost);
@@ -452,7 +482,6 @@
     $('cia-kpi-share').textContent = pctFmt.format(s.share) + ' do tempo de motor ligado';
     $('cia-kpi-vehicles').textContent = String(s.vehicles);
     $('cia-kpis').hidden = false;
-    $('cia-idle-title').hidden = false;
 
     var n = s.ranking.length;
     var basis;
@@ -466,9 +495,7 @@
     if (document.activeElement !== input) input.value = priceFmt.format(price);
     $('cia-price-source').textContent = price === DEFAULT_PRICE ? PRICE_SOURCE : 'valor informado por você';
 
-    var list = $('cia-ranking');
-    clear(list);
-    s.ranking.slice(0, TOP_VEHICLES).forEach(function (v) { list.appendChild(vehicleItem(v)); });
+    renderTop(s, advise(s, DAYS));
     $('cia-ranking-card').hidden = n === 0;
     setStatus(n === 0 ? 'Nenhum tempo de motor ligado parado no período.' : '');
   }

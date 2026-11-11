@@ -1,4 +1,4 @@
-/* Combustível IA v0.4 · todas as classes com prefixo cia- (exigência da Geotab) */
+/* Combustível IA v0.5 · todas as classes com prefixo cia- (exigência da Geotab) */
 .cia-root {
   --cia-ink: #0A1A33;
   --cia-text: #424245;
@@ -68,6 +68,45 @@
   .cia-action-body { margin-left: 0; grid-template-columns: 1fr; }
 }
 
+/* Top 10: uma linha por veículo, detalhe ao clicar */
+.cia-kpis { margin-top: 24px; }
+.cia-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cia-row-details { background: var(--cia-surface); border-radius: 16px; }
+.cia-row-summary {
+  list-style: none; cursor: pointer; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto 16px;
+  column-gap: 14px; align-items: center; padding: 14px 18px; border-radius: 16px;
+}
+.cia-row-summary::-webkit-details-marker { display: none; }
+.cia-row-summary:hover { background: #ECECF0; }
+.cia-row-summary:focus-visible { outline: 2px solid var(--cia-accent); outline-offset: 2px; }
+.cia-row-pos {
+  width: 28px; height: 28px; border-radius: 14px; background: var(--cia-card); color: var(--cia-ink);
+  font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+}
+.cia-row-main { display: flex; flex-direction: column; min-width: 0; }
+.cia-row-name { font-size: 16px; font-weight: 600; color: var(--cia-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cia-row-meta { font-size: 13px; color: var(--cia-muted); margin-top: 2px; }
+.cia-row-side { display: flex; flex-direction: column; align-items: flex-end; }
+.cia-row-cost { font-size: 18px; font-weight: 700; color: var(--cia-ink); white-space: nowrap; }
+.cia-row:first-child .cia-row-cost { color: var(--cia-accent); }
+.cia-row-hint { font-size: 12px; color: var(--cia-muted); margin-top: 2px; white-space: nowrap; }
+.cia-row-hint-action { color: var(--cia-accent); font-weight: 600; }
+.cia-row-chevron { font-size: 22px; line-height: 1; color: var(--cia-muted); transition: transform .15s ease; justify-self: end; }
+.cia-row-details[open] .cia-row-chevron { transform: rotate(90deg); }
+.cia-row-body { padding: 4px 18px 20px 60px; display: flex; flex-direction: column; gap: 16px; }
+.cia-row-action { background: var(--cia-card); border-radius: 14px; padding: 16px 18px; }
+.cia-row-action .cia-action-body { margin: 10px 0 0; grid-template-columns: 128px 1fr; }
+.cia-row-ok, .cia-row-fuel { margin: 0; font-size: 14px; color: var(--cia-text); }
+.cia-row-label { margin: 0; font-size: 13px; font-weight: 600; color: var(--cia-ink); }
+.cia-row-drivers .cia-drivers { margin-top: 8px; }
+@media (prefers-reduced-motion: reduce) { .cia-row-chevron { transition: none; } }
+@media (max-width: 640px) {
+  .cia-row-summary { grid-template-columns: 28px minmax(0, 1fr) auto; }
+  .cia-row-chevron { display: none; }
+  .cia-row-body { padding: 4px 14px 16px; }
+  .cia-row-action .cia-action-body { grid-template-columns: 1fr; }
+}
+
 /* Um bloco por veículo */
 .cia-vehicles { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .cia-vehicle { background: var(--cia-surface); border-radius: 16px; padding: 18px 20px; }
@@ -76,7 +115,7 @@
 .cia-vehicle-cost { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
 .cia-vehicle:first-child .cia-vehicle-cost { color: var(--cia-accent); }
 .cia-vehicle-share { margin: 2px 0 0; font-size: 13px; color: var(--cia-muted); }
-.cia-vehicle-unknown { margin: 10px 0 0 40px; font-size: 13px; color: var(--cia-muted); }
+.cia-vehicle-unknown { margin: 8px 0 0 40px; font-size: 13px; color: var(--cia-muted); }
 
 /* Motoristas dentro do veículo */
 .cia-drivers { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
