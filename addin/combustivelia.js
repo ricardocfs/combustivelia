@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '0.8.0';
+  var VERSION = '0.8.1';
   var DAYS = 7;
   var TOP_VEHICLES = 10;
   var TOP_DRIVERS = 3;
@@ -1021,14 +1021,6 @@
     barChart($('cia-chart-cost'), e.weeks.map(function (w) { return w.cost; }), labels, brlShort);
     barChart($('cia-chart-kml'), e.weeks.map(function (w) { return w.kml; }), labels, function (v) { return kmlFmt.format(v); });
 
-    var better = $('cia-better');
-    clear(better);
-    e.better.forEach(function (m, i) { better.appendChild(moverRow(m, i + 1, false)); });
-    var empty = $('cia-better-empty');
-    empty.textContent = e.compared === 0
-      ? 'Nenhum veículo rodou 300 km ou mais na semana com consumo registrado, então ainda não há comparação justa.'
-      : 'Nenhum veículo reduziu o consumo por km em mais de 3% contra a própria média das 4 semanas anteriores.';
-    empty.hidden = e.better.length > 0;
     $('cia-evo-content').hidden = false;
   }
 
