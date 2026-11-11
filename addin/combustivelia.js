@@ -1,4 +1,4 @@
-/* Combustível IA · Add-In de página para o MyGeotab (versão 0.7)
+/* Combustível IA · Add-In de página para o MyGeotab (versão 0.8)
  * Abre com "O que fazer esta semana": poucas ações, cada uma com por quê, o que
  * verificar, o que fazer e quanto vale. Depois, motor ligado parado por veículo, em horas, litros e R$, com os 3 motoristas
  * que mais contribuíram em cada veículo. Check-up de dados: quais frentes de
@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '0.7.1';
+  var VERSION = '0.8.0';
   var DAYS = 7;
   var TOP_VEHICLES = 10;
   var TOP_DRIVERS = 3;
@@ -267,7 +267,9 @@
   }
 
   // ---- Evolução da frota ------------------------------------------------------
-  var WEEKS = 6;            // semanas no gráfico
+  var WEEKS = 6;            // semanas nos gráficos de gasto e km/L
+  var LOAD_WEEKS = 8;       // semanas carregadas: 4 de tendência + 4 de histórico para cada uma
+  var TREND_WEEKS = 4;      // semanas no "por onde o diesel está vazando, semana a semana"
   var BASE_WEEKS = 4;       // histórico do próprio veículo para comparar a última semana
   var MIN_KM_WEEK = 300;    // abaixo disso a semana do veículo não entra na comparação
   var NOISE = 0.03;         // variação de eficiência menor que 3% é ruído
@@ -370,13 +372,14 @@
       var todo = {
         faults: 'Leve à oficina e peça para verificar as falhas registradas nesta semana.',
         driver: 'Converse com ' + drvName + ' e compare a rota com a das semanas anteriores.',
-        idle: 'Abra o veículo na aba Esta semana: o tempo parado explica a piora.',
+        idle: 'Abra o veículo na aba Última semana: o tempo parado explica a piora.',
         speed: 'Combine com quem dirige o limite de velocidade na estrada.',
         none: 'Peça uma inspeção: filtros de ar e de combustível, calibragem dos pneus e injeção.'
       }[kind];
-      if (change > 0) todo = drvName ? 'Reconheça o resultado com ' + drvName + '.' : 'Veja o que mudou para repetir nos outros veículos.';
+      if (change > 0) todo = 'Veja ' + (drvName ? 'com ' + drvName + ' ' : '') + 'o que mudou: rota, carga ou jeito de dirigir. Se foi o jeito de dirigir, reconheça e use como exemplo.';
       movers.push({ id: v.id, name: v.name, kmlLast: kmlL, kmlBase: kmlB, change: change, km: kmL, liters: lL,
         extraLiters: extraL, value: extraL * price, causes: causes, todo: todo, kind: change < 0 ? kind : 'better',
+        consumption: kmlB / kmlL - 1,   // variação do consumo por km (+ = mais diesel por km)
         driverName: drvName, speedLast: speedL, speedBase: speedB, faults: v.faults[lastW] });
     });
     var worseAll = movers.filter(function (m) { return m.change < 0; }).sort(function (a, b) { return b.value - a.value; });
@@ -419,13 +422,13 @@
       var a = { vehicleId: m.id, value: value, sortKey: value, valueLabel: 'até ' + brl.format(value) + '/mês' };
       if (m.kind === 'faults') {
         a.type = 'mecanica'; a.tag = 'Mecânica'; a.short = 'Levar à oficina';
-        a.title = 'Levar o ' + m.name + ' à oficina: consumo ' + pctFmt.format(-m.change) + ' acima do normal';
+        a.title = 'Levar o ' + m.name + ' à oficina: consumo por km ' + pctFmt.format(m.kmlBase / m.kmlLast - 1) + ' acima da própria média';
         a.why = base + ' Na mesma semana, ' + m.faults + (m.faults === 1 ? ' falha foi registrada.' : ' falhas foram registradas.');
         a.check = 'No MyGeotab, quais falhas apareceram neste veículo. Falhas de injeção, turbo, filtro de partículas ou sensores explicam consumo alto.';
         a.todo = 'Agendar a oficina para verificar as falhas registradas, antes que vire quebra na estrada.';
       } else if (m.kind === 'none') {
         a.type = 'mecanica'; a.tag = 'Mecânica'; a.short = 'Revisar na oficina';
-        a.title = 'Revisar o ' + m.name + ': consumo ' + pctFmt.format(-m.change) + ' acima do normal';
+        a.title = 'Revisar o ' + m.name + ': consumo por km ' + pctFmt.format(m.kmlBase / m.kmlLast - 1) + ' acima da própria média';
         a.why = base + ' Tempo parado, velocidade e motorista não mudaram: a causa provável está no caminhão.';
         a.check = 'Se houve mudança de rota, de carga ou de pneus nesta semana. Se não houve, a suspeita fica no caminhão.';
         a.todo = 'Inspeção de filtros de ar e de combustível, calibragem dos pneus e injeção.';
@@ -521,6 +524,44 @@
     });
     all.sort(function (x, y) { return y.sortKey - x.sortKey; });
     return all;
+  }
+
+  function idleFuelFromRecords(fuel, from, to) {
+    var out = {};
+    (fuel || []).forEach(function (f) {
+      var t = new Date(f.dateTime).getTime();
+      if (!(t >= from && t < to)) return;
+      var l = Number(f.totalIdlingFuelUsedL) || 0;
+      if (l > 0) { var id = refId(f.device); out[id] = (out[id] || 0) + l; }
+    });
+    return out;
+  }
+
+  /** Todas as ações de uma semana (as 3 frentes), com os mesmos critérios em
+   *  qualquer semana: é o que mantém as duas abas coerentes. */
+  function weekActions(o, endMs, price, idleFallback) {
+    var startMs = endMs - WEEK_MS;
+    var tripsW = (o.trips || []).filter(function (t) { var a = new Date(t.start).getTime(); return a >= startMs && a < endMs; });
+    var summary = summarizeIdle(o.devices || [], tripsW, o.users || []);
+    var idle = idleFuelFromRecords(o.fuel, startMs, endMs);
+    if (!Object.keys(idle).length && idleFallback) idle = idleFallback;
+    var s = valueIdle(summary, idle, price);
+    var e = evolution(Object.assign({}, o, { end: new Date(endMs), price: price, weeks: Math.max(5, o.chartWeeks || 5) }));
+    var more = e.hasFuel ? fuelActions(e).concat(driverGaps(Object.assign({}, o, { end: new Date(endMs), price: price }))) : [];
+    return { s: s, e: e, actions: combineActions(advise(s, DAYS).all, more) };
+  }
+
+  /** "Por onde o diesel está vazando", semana a semana, nas últimas n semanas. */
+  function leakTrend(o, price, n) {
+    var end = o.end.getTime(), out = [];
+    for (var k = (n || TREND_WEEKS) - 1; k >= 0; k--) {
+      var endK = end - k * WEEK_MS;
+      var w = weekActions(o, endK, price);
+      var byName = {};
+      leakByPillar(w.actions).forEach(function (l) { byName[l.name] = l.value; });
+      out.push({ start: new Date(endK - WEEK_MS), total: w.actions.reduce(function (x, a) { return x + a.value; }, 0), byPillar: byName });
+    }
+    return out;
   }
 
   var PILLAR_OF = { conducao: 'Condução', equipe: 'Condução', motorista: 'Condução', velocidade: 'Condução', kml_motorista: 'Condução', mecanica: 'Mecânica', operacao: 'Operação' };
@@ -789,7 +830,7 @@
       var note;
       if (l.value > 0) note = (l.count === 1 ? '1 ação' : l.count + ' ações') + ' · ' + pctFmt.format(l.value / total) + ' do total';
       else if (l.name === 'Mecânica' && !hasFuel) note = 'Sem dados de consumo para avaliar';
-      else note = 'Nada fora do normal nesta semana';
+      else note = 'Nada fora do normal na semana';
       col.appendChild(el('p', 'cia-leak-note', note));
       box.appendChild(col);
     });
@@ -864,7 +905,7 @@
     summary.appendChild(main);
     var side = el('span', 'cia-row-side');
     side.appendChild(el('span', 'cia-row-cost' + (worse ? '' : ' cia-good'), (worse ? '+' : '−') + brl.format(Math.abs(m.value))));
-    side.appendChild(el('span', 'cia-row-hint', signedPct.format(m.change) + ' de eficiência'));
+    side.appendChild(el('span', 'cia-row-hint', 'consumo por km ' + signedPct.format(m.consumption)));
     summary.appendChild(side);
     summary.appendChild(el('span', 'cia-row-chevron', '›'));
     details.appendChild(summary);
@@ -879,7 +920,7 @@
     dl.appendChild(dd);
     dl.appendChild(el('dt', 'cia-action-label', 'Sugestão de ação'));
     dl.appendChild(el('dd', 'cia-action-text', sentence(m.todo)));
-    dl.appendChild(el('dt', 'cia-action-label', worse ? 'Gasto a mais' : 'Economia'));
+    dl.appendChild(el('dt', 'cia-action-label', worse ? 'Gasto a mais' : 'Diesel a menos'));
     dl.appendChild(el('dd', 'cia-action-text', liters(Math.abs(m.extraLiters)) + ' (' + brl.format(Math.abs(m.value)) + ') nesta semana, contra a média das 4 anteriores'));
     box.appendChild(dl);
     body.appendChild(box);
@@ -888,43 +929,97 @@
     return li;
   }
 
-  function versusBase(change, betterWhenUp) {
-    if (Math.abs(change) < NOISE) return 'Estável em relação à média das 4 semanas anteriores';
-    var good = betterWhenUp ? change > 0 : change < 0;
-    return signedPct.format(change) + (good ? ', melhor' : ', pior') + ' que a média das 4 semanas anteriores';
+  /** Variação contra a média das 4 semanas anteriores, sem julgar se é bom ou ruim. */
+  function versusBase(change, noun) {
+    if (Math.abs(change) < NOISE) return noun + ' estável em relação à média das 4 semanas anteriores';
+    return noun + ' ' + pctFmt.format(Math.abs(change)) + (change > 0 ? ' maior' : ' menor') + ' que a média das 4 semanas anteriores';
   }
 
-  /** Visão ampla e de tendência. Os problemas de cada veículo ficam em "Esta semana"
-   *  (mesmos critérios, sem repetir): aqui entram a evolução e quem melhorou. */
-  function renderEvolution(e) {
+  /** "12% maior", "estável" ou "3,5 vezes" a média: legível mesmo quando o salto é grande. */
+  function vsAvg(now, avg, what) {
+    var r = now / avg;
+    if (Math.abs(r - 1) < NOISE) return 'Estável em relação à ' + what;
+    if (r >= 2) return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(r) + ' vezes a ' + what;
+    return pctFmt.format(Math.abs(r - 1)) + (r > 1 ? ' maior' : ' menor') + ' que a ' + what;
+  }
+
+  var PILLAR_SHADE = { 'Mecânica': 'var(--cia-accent)', 'Condução': 'var(--cia-navy)', 'Operação': 'var(--cia-rail)' };
+
+  function stackedChart(box, trend) {
+    clear(box);
+    var max = Math.max.apply(null, trend.map(function (w) { return w.total; }).concat([0]));
+    trend.forEach(function (w, i) {
+      var col = el('div', 'cia-bar-col' + (i === trend.length - 1 ? ' cia-bar-last' : ''));
+      col.appendChild(el('span', 'cia-bar-value', w.total > 0 ? brlShort(w.total) : brl.format(0)));
+      var track = el('div', 'cia-bar-track');
+      var stack = el('div', 'cia-stack');
+      stack.style.height = (max > 0 ? Math.max(2, Math.round(w.total / max * 100)) : 2) + '%';
+      ['Operação', 'Condução', 'Mecânica'].forEach(function (k) {
+        var v = w.byPillar[k] || 0;
+        if (!(v > 0) || !(w.total > 0)) return;
+        var seg = el('div', 'cia-stack-seg');
+        seg.style.height = (v / w.total * 100) + '%';
+        seg.style.background = PILLAR_SHADE[k];
+        seg.title = k + ': ' + brl.format(v);
+        stack.appendChild(seg);
+      });
+      track.appendChild(stack);
+      col.appendChild(track);
+      col.appendChild(el('span', 'cia-bar-label', dayMonth.format(w.start)));
+      box.appendChild(col);
+    });
+  }
+
+  /** Visão ampla e de tendência, com os mesmos critérios da aba Esta semana. */
+  function renderEvolution(e, trend) {
     var status = $('cia-evo-status');
     if (!e.hasFuel) {
-      status.textContent = 'Esta frota não envia o consumo de combustível à Geotab, então não dá para mostrar gasto nem eficiência (km/L).';
+      status.textContent = 'Esta frota não envia o consumo de combustível à Geotab, então não dá para mostrar gasto nem consumo por km.';
       $('cia-evo-content').hidden = true;
       return;
     }
     status.textContent = '';
+    var lastT = trend[trend.length - 1], prior = trend.slice(0, -1);
+    var priorAvg = prior.length ? prior.reduce(function (x, w) { return x + w.total; }, 0) / prior.length : 0;
+
     $('cia-evo-cost').textContent = brl.format(e.cost);
-    $('cia-evo-cost-note').textContent = liters(e.liters) + ' · ' + versusBase(e.costChange, false).toLowerCase();
+    $('cia-evo-cost-note').textContent = liters(e.liters) + ' · ' + versusBase(e.costChange, 'gasto').replace(/^gasto /, '');
+    $('cia-evo-rec').textContent = brl.format(lastT.total);
+    $('cia-evo-rec-note').textContent = priorAvg > 0
+      ? vsAvg(lastT.total, priorAvg, 'média das ' + prior.length + ' semanas anteriores')
+      : 'por mês, nas ações da última semana';
     $('cia-evo-kml').textContent = e.kml > 0 ? kmlFmt.format(e.kml) + ' km/L' : '—';
-    $('cia-evo-kml-note').textContent = e.baseKml > 0 && e.kml > 0 ? versusBase(e.change, true) : '';
-    $('cia-evo-idle').textContent = brl.format(e.idleCost);
-    $('cia-evo-idle-note').textContent = 'Na semana · ' + versusBase(e.idleChange, false).toLowerCase();
-    $('cia-evo-moves').textContent = e.worseCount + (e.worseCount === 1 ? ' piorou' : ' pioraram');
-    $('cia-evo-moves-note').textContent = e.betterCount + (e.betterCount === 1 ? ' melhorou' : ' melhoraram') + ', de ' + e.compared + ' com mudança relevante';
+    // km/L maior = consumo por km menor
+    $('cia-evo-kml-note').textContent = e.baseKml > 0 && e.kml > 0 ? versusBase(e.baseKml / e.kml - 1, 'Consumo por km') : '';
+    $('cia-evo-moves').textContent = e.worseCount + (e.worseCount === 1 ? ' aumentou' : ' aumentaram');
+    $('cia-evo-moves-note').textContent = e.betterCount + (e.betterCount === 1 ? ' reduziu' : ' reduziram') +
+      '; os demais variaram menos de 3% contra a própria média';
+
+    stackedChart($('cia-chart-leak'), trend);
+    var legend = $('cia-leak-trend');
+    clear(legend);
+    ['Mecânica', 'Condução', 'Operação'].map(function (k) {
+      var now = lastT.byPillar[k] || 0;
+      var avg = prior.length ? prior.reduce(function (x, w) { return x + (w.byPillar[k] || 0); }, 0) / prior.length : 0;
+      return { name: k, now: now, avg: avg };
+    }).sort(function (a, b) { return b.now - a.now; }).forEach(function (l) {
+      var col = el('div', 'cia-leak-col');
+      var head = el('div', 'cia-leak-head');
+      var dot = el('span', 'cia-leak-dot'); dot.style.background = PILLAR_SHADE[l.name];
+      head.appendChild(dot); head.appendChild(el('span', 'cia-leak-name', l.name));
+      col.appendChild(head);
+      col.appendChild(el('p', 'cia-leak-value', l.now > 0 ? 'até ' + brl.format(l.now) : brl.format(0)));
+      var note;
+      if (!(l.avg > 0) && !(l.now > 0)) note = 'Nada fora do normal nas últimas semanas';
+      else if (!(l.avg > 0)) note = 'Novo na última semana';
+      else note = vsAvg(l.now, l.avg, 'média das semanas anteriores');
+      col.appendChild(el('p', 'cia-leak-note', note));
+      legend.appendChild(col);
+    });
 
     var labels = e.weeks.map(function (w) { return dayMonth.format(w.start); });
     barChart($('cia-chart-cost'), e.weeks.map(function (w) { return w.cost; }), labels, brlShort);
     barChart($('cia-chart-kml'), e.weeks.map(function (w) { return w.kml; }), labels, function (v) { return kmlFmt.format(v); });
-    barChart($('cia-chart-idle'), e.weeks.map(function (w) { return w.idleCost; }), labels, brlShort);
-
-    var card = $('cia-worse-card');
-    if (e.worseCount > 0) {
-      $('cia-worse-title').textContent = (e.worseCount === 1 ? '1 veículo gastou ' : e.worseCount + ' veículos gastaram ') +
-        brl.format(e.extraValue) + ' a mais que a própria média nesta semana';
-      $('cia-worse-sub').textContent = 'A causa provável e o que fazer estão na aba Esta semana, junto com as outras ações, em ordem de valor.';
-      card.hidden = false;
-    } else card.hidden = true;
 
     var better = $('cia-better');
     clear(better);
@@ -932,44 +1027,23 @@
     var empty = $('cia-better-empty');
     empty.textContent = e.compared === 0
       ? 'Nenhum veículo rodou 300 km ou mais na semana com consumo registrado, então ainda não há comparação justa.'
-      : 'Nenhum veículo ficou mais de 3% mais eficiente que a própria média das 4 semanas anteriores.';
+      : 'Nenhum veículo reduziu o consumo por km em mais de 3% contra a própria média das 4 semanas anteriores.';
     empty.hidden = e.better.length > 0;
     $('cia-evo-content').hidden = false;
   }
 
+  function showEvolution() {
+    if (!evo.data) return;
+    var price = readPrice();
+    renderEvolution(evolution(Object.assign({}, evo.data, { price: price, weeks: WEEKS })), leakTrend(evo.data, price, TREND_WEEKS));
+  }
+
   var evo = { api: null, state: null, loaded: false, loading: false, data: null };
 
+  // A carga de dados é uma só (load); a aba Evolução só mostra o que já chegou.
   function loadEvolution() {
-    if (evo.data) { renderEvolution(evolution(Object.assign({}, evo.data, { price: readPrice() }))); return; }
-    if (evo.loaded || evo.loading || !evo.api) { $('cia-evo-status').textContent = 'Carregando ' + WEEKS + ' semanas de dados…'; return; }
-    evo.loading = true;
-    var api = evo.api, state = evo.state;
-    var end = new Date();
-    var start = new Date(end.getTime() - WEEKS * WEEK_MS);
-    var from = start.toISOString(), to = end.toISOString();
-    var groups = state && state.getGroupFilter ? state.getGroupFilter() : [];
-    var deviceSearch = { fromDate: from };
-    if (groups && groups.length) deviceSearch.groups = groups;
-    var range = { fromDate: from, toDate: to };
-    $('cia-evo-status').textContent = 'Carregando ' + WEEKS + ' semanas de dados…';
-    // FuelAndEnergyUsed é o tipo novo; FuelUsed, o anterior. Usa o que a base tiver.
-    var fuelP = safe(call(api, 'Get', { typeName: 'FuelAndEnergyUsed', search: range })).then(function (r) {
-      return r && r.length ? r : safe(call(api, 'Get', { typeName: 'FuelUsed', search: range }));
-    });
-    Promise.all([
-      call(api, 'Get', { typeName: 'Device', search: deviceSearch }),
-      call(api, 'Get', { typeName: 'Trip', search: range }),
-      call(api, 'Get', { typeName: 'User', search: { isDriver: true } }),
-      fuelP,
-      safe(call(api, 'Get', { typeName: 'FaultData', search: { fromDate: new Date(end.getTime() - WEEK_MS).toISOString(), toDate: to } }))
-    ]).then(function (r) {
-      evo.data = { devices: r[0], trips: r[1], names: driverNames(r[2]), fuel: r[3] || [], faults: r[4] || [], end: end };
-      evo.loaded = true; evo.loading = false;
-      renderEvolution(evolution(Object.assign({}, evo.data, { price: readPrice() })));
-    }).catch(function (err) {
-      evo.loading = false;
-      $('cia-evo-status').textContent = 'Não foi possível carregar a evolução. ' + ((err && err.message) || '');
-    });
+    if (evo.data) { showEvolution(); return; }
+    $('cia-evo-status').textContent = 'Carregando ' + LOAD_WEEKS + ' semanas de dados…';
   }
 
   function showTab(name) {
@@ -979,7 +1053,7 @@
       $('cia-tab-' + t).tabIndex = on ? 0 : -1;
       $('cia-panel-' + t).hidden = !on;
     });
-    $('cia-title').textContent = name === 'semana' ? 'Sua frota esta semana' : 'Evolução da frota';
+    $('cia-title').textContent = name === 'semana' ? 'Sua frota na última semana' : 'Evolução da frota';
     $('cia-period').hidden = name !== 'semana';
     if (name === 'evolucao') loadEvolution();
   }
@@ -1005,16 +1079,12 @@
     if ($('cia-version')) $('cia-version').textContent = 'Combustível IA · versão ' + VERSION;
     if (!last) return;
     var price = readPrice();
-    var s = valueIdle(last.summary, last.fuel, price);
-    var e = evo.data ? evolution(Object.assign({}, evo.data, { price: price })) : null;
-    var more = [];
-    if (e && e.hasFuel) {
-      more = fuelActions(e).concat(driverGaps(Object.assign({}, evo.data, { price: price })));
-    }
-    var actions = combineActions(advise(s, DAYS).all, more);
+    var week = weekActions(evo.data, last.end.getTime(), price, last.fuel);
+    var s = week.s, actions = week.actions;
+    var e = evolution(Object.assign({}, evo.data, { price: price, weeks: WEEKS }));
 
     var dateFmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' });
-    $('cia-period').textContent = 'De ' + dateFmt.format(last.start) + ' a ' + dateFmt.format(last.end);
+    $('cia-period').textContent = 'De ' + dateFmt.format(last.start) + ' a ' + dateFmt.format(new Date(last.end.getTime() - 1)) + ' · últimos 7 dias fechados';
     var value = actions.reduce(function (x, a) { return x + a.value; }, 0);
     var nActions = actions.filter(function (a) { return a.value > 0; }).length;
     $('cia-kpi-value').textContent = brl.format(value);
@@ -1045,7 +1115,7 @@
     renderTop(s, actions, last.devices, e ? e.byVehicle : null);
     $('cia-ranking-card').hidden = false;
     setStatus('');
-    if (e && !$('cia-panel-evolucao').hidden) renderEvolution(e);
+    if (!$('cia-panel-evolucao').hidden) showEvolution();
   }
 
   function bindPrice() {
@@ -1073,13 +1143,14 @@
   }
 
   function load(api, state) {
-    var end = new Date();
+    // Sempre os últimos 7 dias fechados: termina à meia-noite de hoje (hoje não entra)
+    var end = new Date(); end.setHours(0, 0, 0, 0);
     var start = new Date(end.getTime() - DAYS * 86400000);
-    var evoStart = new Date(end.getTime() - WEEKS * WEEK_MS);
+    var evoStart = new Date(end.getTime() - LOAD_WEEKS * WEEK_MS);
     var from = start.toISOString(), to = end.toISOString();
     var range6 = { fromDate: evoStart.toISOString(), toDate: to };
     var groups = state && state.getGroupFilter ? state.getGroupFilter() : [];
-    setStatus('Carregando ' + WEEKS + ' semanas de dados da frota…');
+    setStatus('Carregando ' + LOAD_WEEKS + ' semanas de dados da frota…');
     bindPrice();
     bindTabs();
     evo = { api: api, state: state, loaded: false, loading: true, data: null };
@@ -1097,7 +1168,7 @@
       call(api, 'Get', { typeName: 'User', search: { isDriver: true } }),
       safe(call(api, 'Get', { typeName: 'StatusData', search: signal(DIAG.idleFuel) })),
       fuelP,
-      safe(call(api, 'Get', { typeName: 'FaultData', search: { fromDate: from, toDate: to } }))
+      safe(call(api, 'Get', { typeName: 'FaultData', search: { fromDate: new Date(end.getTime() - TREND_WEEKS * WEEK_MS).toISOString(), toDate: to } }))
     ]).then(function (res) {
       var devices = res[0], trips6 = res[1], users = res[2];
       var inFilter = {};
@@ -1109,7 +1180,7 @@
       Object.keys(fuelAll).forEach(function (id) { if (inFilter[id]) fuel[id] = fuelAll[id]; });
       var tripsIn = trips.filter(function (t) { return inFilter[refId(t.device)]; });
 
-      evo.data = { devices: devices, trips: trips6, names: driverNames(users), fuel: res[4] || [], faults: res[5] || [], end: end };
+      evo.data = { devices: devices, trips: trips6, users: users, names: driverNames(users), fuel: res[4] || [], faults: res[5] || [], end: end };
       evo.loaded = true; evo.loading = false;
       last = { summary: summarizeIdle(devices, trips, users), fuel: fuel, start: start, end: end, devices: devices };
       render();
@@ -1122,7 +1193,8 @@
       ]).then(function (c) {
         renderCheckup(assessData({
           devices: devices, trips: tripsIn, idleFuelVehicles: Object.keys(fuel).length,
-          rpm: c[0], totalFuel: c[1] || (res[4] || []).length > 0, coolant: c[2], faults: (res[5] || []).length > 0, zones: c[3]
+          rpm: c[0], totalFuel: c[1] || (res[4] || []).length > 0, coolant: c[2],
+          faults: (res[5] || []).some(function (f) { return new Date(f.dateTime).getTime() >= t0; }), zones: c[3]
         }));
       });
     }).catch(function (err) {
@@ -1149,7 +1221,7 @@
       VERSION: VERSION, DEFAULT_PRICE: DEFAULT_PRICE, IDLE_RATE_LPH: IDLE_RATE_LPH,
       parseDuration: parseDuration, summarizeIdle: summarizeIdle, idleFuelByDevice: idleFuelByDevice,
       valueIdle: valueIdle, advise: advise, evolution: evolution, fuelActions: fuelActions, driverGaps: driverGaps,
-      combineActions: combineActions, leakByPillar: leakByPillar, assessData: assessData, parsePrice: parsePrice
+      combineActions: combineActions, leakByPillar: leakByPillar, weekActions: weekActions, leakTrend: leakTrend, assessData: assessData, parsePrice: parsePrice
     };
   }
 })();

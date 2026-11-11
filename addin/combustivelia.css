@@ -150,6 +150,12 @@
 .cia-leak-value { margin: 6px 0 0; font-size: 26px; font-weight: 700; letter-spacing: -0.03em; }
 .cia-leak-note { margin: 2px 0 0; font-size: 13px; color: var(--cia-muted); }
 
+/* Vazamento semana a semana */
+.cia-chart-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; height: 220px; }
+.cia-stack { width: 100%; display: flex; flex-direction: column-reverse; gap: 2px; border-radius: 8px 8px 3px 3px; overflow: hidden; }
+.cia-stack-seg { width: 100%; }
+.cia-leak-spaced { margin-top: 24px; }
+
 /* Ligação entre as abas */
 .cia-link-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
 .cia-flush { margin-bottom: 0; }
