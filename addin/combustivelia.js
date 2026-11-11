@@ -1,4 +1,4 @@
-/* Combustível IA · Add-In de página para o MyGeotab (versão 0.5)
+/* Combustível IA · Add-In de página para o MyGeotab (versão 0.6)
  * Abre com "O que fazer esta semana": poucas ações, cada uma com por quê, o que
  * verificar, o que fazer e quanto vale. Depois, motor ligado parado por veículo, em horas, litros e R$, com os 3 motoristas
  * que mais contribuíram em cada veículo. Check-up de dados: quais frentes de
@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '0.5.0';
+  var VERSION = '0.6.0';
   var DAYS = 7;
   var TOP_VEHICLES = 10;
   var TOP_DRIVERS = 3;
@@ -261,6 +261,128 @@
     };
   }
 
+  // ---- Evolução da frota ------------------------------------------------------
+  var WEEKS = 6;            // semanas no gráfico
+  var BASE_WEEKS = 4;       // histórico do próprio veículo para comparar a última semana
+  var MIN_KM_WEEK = 300;    // abaixo disso a semana do veículo não entra na comparação
+  var NOISE = 0.03;         // variação de eficiência menor que 3% é ruído
+  var TOP_MOVERS = 5;
+  var WEEK_MS = 7 * 86400000;
+
+  /** Eficiência (km/L) da frota por semana e os veículos que mais pioraram e
+   *  melhoraram, cada um contra a própria média das 4 semanas anteriores.
+   *  fuel: registros FuelUsed/FuelAndEnergyUsed (litros por evento). */
+  function evolution(o) {
+    var end = o.end.getTime();
+    var n = o.weeks || WEEKS;
+    var names = o.names || {};
+    var price = o.price;
+    function weekOf(t) {
+      var ms = new Date(t).getTime();
+      if (!isFinite(ms) || ms > end) return -1;
+      var w = n - 1 - Math.floor((end - ms) / WEEK_MS);
+      return w >= 0 ? w : -1;
+    }
+    function zeros() { var a = []; for (var i = 0; i < n; i++) a.push(0); return a; }
+    var byId = {};
+    (o.devices || []).forEach(function (d) {
+      byId[d.id] = { id: d.id, name: d.name || d.id, km: zeros(), liters: zeros(), idleL: zeros(), drivingS: zeros(), faults: zeros(), driverKm: [] };
+      for (var i = 0; i < n; i++) byId[d.id].driverKm.push({});
+    });
+    (o.trips || []).forEach(function (t) {
+      var v = byId[refId(t.device)]; var w = weekOf(t.start || t.stop);
+      if (!v || w < 0) return;
+      var km = Number(t.distance) || 0;
+      v.km[w] += km;
+      v.drivingS[w] += parseDuration(t.drivingDuration);
+      var id = refId(t.driver);
+      if (id && id !== UNKNOWN_DRIVER) v.driverKm[w][id] = (v.driverKm[w][id] || 0) + km;
+    });
+    (o.fuel || []).forEach(function (f) {
+      var v = byId[refId(f.device)]; var w = weekOf(f.dateTime);
+      if (!v || w < 0) return;
+      v.liters[w] += Number(f.totalFuelUsed) || 0;
+      v.idleL[w] += Number(f.totalIdlingFuelUsedL) || 0;
+    });
+    (o.faults || []).forEach(function (f) {
+      var v = byId[refId(f.device)]; var w = weekOf(f.dateTime);
+      if (v && w >= 0) v.faults[w] += 1;
+    });
+
+    var vehicles = Object.keys(byId).map(function (k) { return byId[k]; });
+    var weeks = [];
+    for (var w = 0; w < n; w++) {
+      var km = 0, l = 0, idle = 0;
+      vehicles.forEach(function (v) {
+        if (v.km[w] > 0 && v.liters[w] > 0) { km += v.km[w]; l += v.liters[w]; }
+        idle += v.idleL[w];
+      });
+      weeks.push({ start: new Date(end - (n - w) * WEEK_MS), km: km, liters: l, kml: l > 0 ? km / l : 0, idleLiters: idle, idleCost: idle * price });
+    }
+    var lastW = n - 1;
+    var baseFrom = Math.max(0, lastW - BASE_WEEKS);
+    function sum(a, from, to) { var x = 0; for (var i = from; i < to; i++) x += a[i]; return x; }
+    function mainDriver(map) {
+      var best = null;
+      Object.keys(map).forEach(function (id) { if (!best || map[id] > map[best]) best = id; });
+      return best;
+    }
+
+    var movers = [];
+    vehicles.forEach(function (v) {
+      var kmL = v.km[lastW], lL = v.liters[lastW];
+      var kmB = sum(v.km, baseFrom, lastW), lB = sum(v.liters, baseFrom, lastW);
+      if (kmL < MIN_KM_WEEK || !(lL > 0) || kmB < 2 * MIN_KM_WEEK || !(lB > 0)) return;
+      var kmlL = kmL / lL, kmlB = kmB / lB;
+      if (kmlL < 0.5 || kmlL > 40 || kmlB < 0.5 || kmlB > 40) return; // leitura implausível
+      var change = (kmlL - kmlB) / kmlB;
+      if (Math.abs(change) < NOISE) return;
+      var extraL = lL - kmL / kmlB;      // + gastou a mais; − economizou
+      var causes = [], kind = 'none';
+      var idleShareL = v.idleL[lastW] / lL, idleShareB = sum(v.idleL, baseFrom, lastW) / lB;
+      var dS = v.drivingS[lastW], dB = sum(v.drivingS, baseFrom, lastW);
+      var speedL = dS > 0 ? kmL / (dS / 3600) : 0, speedB = dB > 0 ? kmB / (dB / 3600) : 0;
+      var drvL = mainDriver(v.driverKm[lastW]);
+      var drvSeen = false;
+      for (var i = baseFrom; i < lastW; i++) if (drvL && v.driverKm[i][drvL]) drvSeen = true;
+      var drvName = drvL ? (names[drvL] || 'Motorista ' + drvL) : null;
+      if (change < 0) {
+        if (v.faults[lastW] > 0) { causes.push(v.faults[lastW] + (v.faults[lastW] === 1 ? ' registro' : ' registros') + ' de falha nesta semana.'); kind = 'faults'; }
+        if (drvL && !drvSeen) { causes.push('Motorista diferente: ' + drvName + ' fez a maior parte dos quilômetros e não dirigiu este veículo nas 4 semanas anteriores.'); if (kind === 'none') kind = 'driver'; }
+        if (idleShareL - idleShareB >= 0.05) { causes.push('O motor ligado parado subiu de ' + pctFmt.format(idleShareB) + ' para ' + pctFmt.format(idleShareL) + ' do diesel gasto.'); if (kind === 'none') kind = 'idle'; }
+        if (speedB > 0 && speedL / speedB - 1 >= 0.08) { causes.push('Velocidade média subiu de ' + Math.round(speedB) + ' para ' + Math.round(speedL) + ' km/h.'); if (kind === 'none') kind = 'speed'; }
+        if (!causes.length) causes.push('Nada nos dados de condução explica a piora: é o tipo de caso para a oficina.');
+      } else {
+        if (idleShareB - idleShareL >= 0.05) causes.push('O motor ligado parado caiu de ' + pctFmt.format(idleShareB) + ' para ' + pctFmt.format(idleShareL) + ' do diesel gasto.');
+        if (speedB > 0 && 1 - speedL / speedB >= 0.08) causes.push('Velocidade média caiu de ' + Math.round(speedB) + ' para ' + Math.round(speedL) + ' km/h.');
+        if (drvL && !drvSeen) causes.push('Motorista diferente: ' + drvName + ' fez a maior parte dos quilômetros.');
+        if (!causes.length) causes.push('Os dados de condução não mostram uma mudança clara; pode ser rota ou carga mais leve.');
+      }
+      var todo = {
+        faults: 'Leve à oficina e peça para verificar as falhas registradas nesta semana.',
+        driver: 'Converse com ' + drvName + ' e compare a rota com a das semanas anteriores.',
+        idle: 'Abra o veículo na aba Esta semana: o tempo parado explica a piora.',
+        speed: 'Combine com quem dirige o limite de velocidade na estrada.',
+        none: 'Peça uma inspeção: filtros de ar e de combustível, calibragem dos pneus e injeção.'
+      }[kind];
+      if (change > 0) todo = drvName ? 'Reconheça o resultado com ' + drvName + '.' : 'Veja o que mudou para repetir nos outros veículos.';
+      movers.push({ id: v.id, name: v.name, kmlLast: kmlL, kmlBase: kmlB, change: change, km: kmL, liters: lL,
+        extraLiters: extraL, value: extraL * price, causes: causes, todo: todo, kind: change < 0 ? kind : 'better' });
+    });
+    var worse = movers.filter(function (m) { return m.change < 0; }).sort(function (a, b) { return b.value - a.value; }).slice(0, TOP_MOVERS);
+    var better = movers.filter(function (m) { return m.change > 0; }).sort(function (a, b) { return a.value - b.value; }).slice(0, TOP_MOVERS);
+
+    var last = weeks[lastW], baseKm = 0, baseL = 0;
+    for (var j = baseFrom; j < lastW; j++) { baseKm += weeks[j].km; baseL += weeks[j].liters; }
+    var baseKml = baseL > 0 ? baseKm / baseL : 0;
+    return {
+      weeks: weeks, hasFuel: weeks.some(function (x) { return x.liters > 0; }),
+      kml: last.kml, baseKml: baseKml, change: baseKml > 0 && last.kml > 0 ? (last.kml - baseKml) / baseKml : 0,
+      liters: last.liters, cost: last.liters * price, compared: movers.length,
+      worse: worse, better: better
+    };
+  }
+
   /** Check-up de dados: o que esta frota permite analisar em cada frente de economia. */
   function assessData(c) {
     var trips = c.trips || [];
@@ -468,6 +590,153 @@
     $('cia-checkup-card').hidden = false;
   }
 
+  var kmlFmt = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  var signedPct = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 0, signDisplay: 'exceptZero' });
+  var dayMonth = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' });
+
+  function barChart(box, values, labels, format) {
+    clear(box);
+    var max = Math.max.apply(null, values.concat([0]));
+    values.forEach(function (v, i) {
+      var col = el('div', 'cia-bar-col' + (i === values.length - 1 ? ' cia-bar-last' : ''));
+      col.appendChild(el('span', 'cia-bar-value', v > 0 ? format(v) : '–'));
+      var bar = el('div', 'cia-bar');
+      bar.style.height = (max > 0 ? Math.max(2, Math.round(v / max * 100)) : 2) + '%';
+      var track = el('div', 'cia-bar-track');
+      track.appendChild(bar);
+      col.appendChild(track);
+      col.appendChild(el('span', 'cia-bar-label', labels[i]));
+      box.appendChild(col);
+    });
+  }
+
+  function moverRow(m, rank, worse) {
+    var li = el('li', 'cia-row');
+    var details = el('details', 'cia-row-details');
+    var summary = el('summary', 'cia-row-summary');
+    summary.appendChild(el('span', 'cia-row-pos', String(rank)));
+    var main = el('span', 'cia-row-main');
+    main.appendChild(el('span', 'cia-row-name', m.name));
+    main.appendChild(el('span', 'cia-row-meta', kmlFmt.format(m.kmlBase) + ' → ' + kmlFmt.format(m.kmlLast) + ' km/L · ' + litersFmt.format(m.km) + ' km na semana'));
+    summary.appendChild(main);
+    var side = el('span', 'cia-row-side');
+    side.appendChild(el('span', 'cia-row-cost' + (worse ? '' : ' cia-good'), (worse ? '+' : '−') + brl.format(Math.abs(m.value))));
+    side.appendChild(el('span', 'cia-row-hint', signedPct.format(m.change) + ' de eficiência'));
+    summary.appendChild(side);
+    summary.appendChild(el('span', 'cia-row-chevron', '›'));
+    details.appendChild(summary);
+    var body = el('div', 'cia-row-body');
+    var box = el('div', 'cia-row-action');
+    var dl = el('dl', 'cia-action-body');
+    dl.appendChild(el('dt', 'cia-action-label', worse ? 'Possíveis causas' : 'O que mudou'));
+    var dd = el('dd', 'cia-action-text');
+    var ul = el('ul', 'cia-causes');
+    m.causes.forEach(function (c) { ul.appendChild(el('li', '', c)); });
+    dd.appendChild(ul);
+    dl.appendChild(dd);
+    dl.appendChild(el('dt', 'cia-action-label', 'Sugestão de ação'));
+    dl.appendChild(el('dd', 'cia-action-text', m.todo));
+    dl.appendChild(el('dt', 'cia-action-label', worse ? 'Gasto a mais' : 'Economia'));
+    dl.appendChild(el('dd', 'cia-action-text', liters(Math.abs(m.extraLiters)) + ' (' + brl.format(Math.abs(m.value)) + ') nesta semana, contra a média das 4 anteriores'));
+    box.appendChild(dl);
+    body.appendChild(box);
+    details.appendChild(body);
+    li.appendChild(details);
+    return li;
+  }
+
+  function renderEvolution(e) {
+    var status = $('cia-evo-status');
+    if (!e.hasFuel) {
+      status.textContent = 'Esta frota não envia o consumo de combustível à Geotab, então não dá para medir a eficiência (km/L).';
+      $('cia-evo-content').hidden = true;
+      return;
+    }
+    status.textContent = '';
+    $('cia-evo-kml').textContent = e.kml > 0 ? kmlFmt.format(e.kml) + ' km/L' : '—';
+    $('cia-evo-kml-note').textContent = e.baseKml > 0 && e.kml > 0
+      ? (Math.abs(e.change) < NOISE ? 'Estável em relação à média das 4 semanas anteriores'
+        : signedPct.format(e.change) + (e.change > 0 ? ', melhor' : ', pior') + ' que a média das 4 semanas anteriores')
+      : '';
+    $('cia-evo-liters').textContent = liters(e.liters);
+    $('cia-evo-cost').textContent = brl.format(e.cost);
+    $('cia-evo-compared').textContent = String(e.compared);
+    var labels = e.weeks.map(function (w) { return dayMonth.format(w.start); });
+    barChart($('cia-chart-kml'), e.weeks.map(function (w) { return w.kml; }), labels, function (v) { return kmlFmt.format(v); });
+    barChart($('cia-chart-idle'), e.weeks.map(function (w) { return w.idleCost; }), labels, function (v) { return brl.format(v); });
+
+    var worse = $('cia-worse'), better = $('cia-better');
+    clear(worse); clear(better);
+    e.worse.forEach(function (m, i) { worse.appendChild(moverRow(m, i + 1, true)); });
+    e.better.forEach(function (m, i) { better.appendChild(moverRow(m, i + 1, false)); });
+    $('cia-worse-empty').hidden = e.worse.length > 0;
+    $('cia-better-empty').hidden = e.better.length > 0;
+    var total = e.worse.reduce(function (x, m) { return x + m.value; }, 0);
+    $('cia-worse-sub').textContent = e.worse.length
+      ? 'Juntos, gastaram ' + brl.format(total) + ' a mais nesta semana do que a própria média. Clique para ver as possíveis causas.'
+      : '';
+    $('cia-evo-content').hidden = false;
+  }
+
+  var evo = { api: null, state: null, loaded: false, loading: false, data: null };
+
+  function loadEvolution() {
+    if (evo.loaded || evo.loading || !evo.api) { if (evo.data) renderEvolution(evolution(Object.assign({}, evo.data, { price: readPrice() }))); return; }
+    evo.loading = true;
+    var api = evo.api, state = evo.state;
+    var end = new Date();
+    var start = new Date(end.getTime() - WEEKS * WEEK_MS);
+    var from = start.toISOString(), to = end.toISOString();
+    var groups = state && state.getGroupFilter ? state.getGroupFilter() : [];
+    var deviceSearch = { fromDate: from };
+    if (groups && groups.length) deviceSearch.groups = groups;
+    var range = { fromDate: from, toDate: to };
+    $('cia-evo-status').textContent = 'Carregando ' + WEEKS + ' semanas de dados…';
+    // FuelAndEnergyUsed é o tipo novo; FuelUsed, o anterior. Usa o que a base tiver.
+    var fuelP = safe(call(api, 'Get', { typeName: 'FuelAndEnergyUsed', search: range })).then(function (r) {
+      return r && r.length ? r : safe(call(api, 'Get', { typeName: 'FuelUsed', search: range }));
+    });
+    Promise.all([
+      call(api, 'Get', { typeName: 'Device', search: deviceSearch }),
+      call(api, 'Get', { typeName: 'Trip', search: range }),
+      call(api, 'Get', { typeName: 'User', search: { isDriver: true } }),
+      fuelP,
+      safe(call(api, 'Get', { typeName: 'FaultData', search: { fromDate: new Date(end.getTime() - WEEK_MS).toISOString(), toDate: to } }))
+    ]).then(function (r) {
+      evo.data = { devices: r[0], trips: r[1], names: driverNames(r[2]), fuel: r[3] || [], faults: r[4] || [], end: end };
+      evo.loaded = true; evo.loading = false;
+      renderEvolution(evolution(Object.assign({}, evo.data, { price: readPrice() })));
+    }).catch(function (err) {
+      evo.loading = false;
+      $('cia-evo-status').textContent = 'Não foi possível carregar a evolução. ' + ((err && err.message) || '');
+    });
+  }
+
+  function showTab(name) {
+    ['semana', 'evolucao'].forEach(function (t) {
+      var on = t === name;
+      $('cia-tab-' + t).setAttribute('aria-selected', on ? 'true' : 'false');
+      $('cia-tab-' + t).tabIndex = on ? 0 : -1;
+      $('cia-panel-' + t).hidden = !on;
+    });
+    $('cia-title').textContent = name === 'semana' ? 'Sua frota esta semana' : 'Evolução da frota';
+    $('cia-period').hidden = name !== 'semana';
+    if (name === 'evolucao') loadEvolution();
+  }
+
+  function bindTabs() {
+    var bar = $('cia-tabs');
+    if (!bar || bar.getAttribute('data-bound')) return;
+    bar.setAttribute('data-bound', '1');
+    $('cia-tab-semana').addEventListener('click', function () { showTab('semana'); });
+    $('cia-tab-evolucao').addEventListener('click', function () { showTab('evolucao'); });
+    bar.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'ArrowRight' && ev.key !== 'ArrowLeft') return;
+      var next = $('cia-tab-semana').getAttribute('aria-selected') === 'true' ? 'evolucao' : 'semana';
+      showTab(next); $('cia-tab-' + next).focus();
+    });
+  }
+
   var last = null; // último resultado, para recalcular quando o preço muda
 
   function render() {
@@ -509,6 +778,7 @@
       if (v) savePrice(v);
       input.value = priceFmt.format(readPrice());
       render();
+      if (evo.data) renderEvolution(evolution(Object.assign({}, evo.data, { price: readPrice() })));
     });
   }
 
@@ -531,6 +801,9 @@
     var groups = state && state.getGroupFilter ? state.getGroupFilter() : [];
     setStatus('Carregando dados da frota…');
     bindPrice();
+    bindTabs();
+    evo = { api: api, state: state, loaded: false, loading: false, data: null };
+    if ($('cia-panel-evolucao') && !$('cia-panel-evolucao').hidden) loadEvolution();
     var deviceSearch = { fromDate: from };
     if (groups && groups.length) deviceSearch.groups = groups;
     function signal(id) { return { diagnosticSearch: { id: id }, fromDate: from, toDate: to }; }
@@ -586,7 +859,7 @@
     module.exports = {
       VERSION: VERSION, DEFAULT_PRICE: DEFAULT_PRICE, IDLE_RATE_LPH: IDLE_RATE_LPH,
       parseDuration: parseDuration, summarizeIdle: summarizeIdle, idleFuelByDevice: idleFuelByDevice,
-      valueIdle: valueIdle, advise: advise, assessData: assessData, parsePrice: parsePrice
+      valueIdle: valueIdle, advise: advise, evolution: evolution, assessData: assessData, parsePrice: parsePrice
     };
   }
 })();

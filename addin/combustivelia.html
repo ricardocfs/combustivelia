@@ -5,15 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Combustível IA</title>
   <link rel="icon" href="icone.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="combustivelia.css?v=0.5.0">
+  <link rel="stylesheet" href="combustivelia.css?v=0.6.0">
 </head>
 <body>
   <main id="combustivelia" class="cia-root" aria-live="polite">
     <header class="cia-header">
       <p class="cia-brand"><svg class="cia-logo-mark" viewBox="0 0 100 120" aria-hidden="true"><path d="M50 4 C50 4 12 52 12 78 A38 38 0 0 0 88 78 C88 52 50 4 50 4 Z" fill="#0A1A33"></path><polyline points="28,70 43,84 56,75 73,95" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"></polyline><polyline points="60,95 73,95 73,82" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"></polyline></svg><span class="cia-logo-name">Combustível <span class="cia-logo-ia">IA</span></span></p>
-      <h1 class="cia-title">Sua frota esta semana</h1>
+      <h1 class="cia-title" id="cia-title">Sua frota esta semana</h1>
       <p class="cia-subtitle" id="cia-period">Últimos 7 dias</p>
     </header>
+
+    <div class="cia-tabs" id="cia-tabs" role="tablist" aria-label="Visões">
+      <button class="cia-tab" id="cia-tab-semana" role="tab" aria-selected="true" aria-controls="cia-panel-semana" type="button">Esta semana</button>
+      <button class="cia-tab" id="cia-tab-evolucao" role="tab" aria-selected="false" aria-controls="cia-panel-evolucao" tabindex="-1" type="button">Evolução da frota</button>
+    </div>
+
+    <div class="cia-price">
+      <label class="cia-price-label" for="cia-price">Preço do diesel</label>
+      <span class="cia-price-field">
+        <span class="cia-price-unit">R$</span>
+        <input class="cia-price-input" id="cia-price" type="text" inputmode="decimal" autocomplete="off" value="7,32" aria-describedby="cia-price-source">
+        <span class="cia-price-unit">/ litro</span>
+      </span>
+      <span class="cia-price-source" id="cia-price-source"></span>
+    </div>
+
+    <div id="cia-panel-semana" role="tabpanel" aria-labelledby="cia-tab-semana">
 
     <section class="cia-kpis" id="cia-kpis" hidden>
       <div class="cia-kpi">
@@ -35,15 +52,6 @@
       </div>
     </section>
 
-    <div class="cia-price">
-      <label class="cia-price-label" for="cia-price">Preço do diesel</label>
-      <span class="cia-price-field">
-        <span class="cia-price-unit">R$</span>
-        <input class="cia-price-input" id="cia-price" type="text" inputmode="decimal" autocomplete="off" value="7,32" aria-describedby="cia-price-source">
-        <span class="cia-price-unit">/ litro</span>
-      </span>
-      <span class="cia-price-source" id="cia-price-source"></span>
-    </div>
 
     <section class="cia-card" id="cia-ranking-card" hidden>
       <h2 class="cia-card-title" id="cia-ranking-title">Top 10 veículos</h2>
@@ -60,7 +68,63 @@
     </section>
 
     <p class="cia-status" id="cia-status">Carregando dados da frota…</p>
+    </div>
+
+    <div id="cia-panel-evolucao" role="tabpanel" aria-labelledby="cia-tab-evolucao" hidden>
+      <p class="cia-status" id="cia-evo-status"></p>
+      <div id="cia-evo-content" hidden>
+        <section class="cia-kpis">
+          <div class="cia-kpi">
+            <p class="cia-kpi-label">Eficiência da frota na última semana</p>
+            <p class="cia-kpi-value" id="cia-evo-kml">—</p>
+            <p class="cia-kpi-note" id="cia-evo-kml-note"></p>
+          </div>
+          <div class="cia-kpi">
+            <p class="cia-kpi-label">Diesel na semana</p>
+            <p class="cia-kpi-value" id="cia-evo-liters">—</p>
+          </div>
+          <div class="cia-kpi">
+            <p class="cia-kpi-label">Gasto com diesel na semana</p>
+            <p class="cia-kpi-value" id="cia-evo-cost">—</p>
+          </div>
+          <div class="cia-kpi">
+            <p class="cia-kpi-label">Veículos comparados</p>
+            <p class="cia-kpi-value" id="cia-evo-compared">—</p>
+            <p class="cia-kpi-note">com 300 km ou mais na semana</p>
+          </div>
+        </section>
+
+        <div class="cia-charts">
+          <section class="cia-card">
+            <h2 class="cia-card-title">Eficiência da frota (km/L)</h2>
+            <p class="cia-card-sub">Por semana, nas últimas 6 semanas.</p>
+            <div class="cia-chart" id="cia-chart-kml"></div>
+          </section>
+          <section class="cia-card">
+            <h2 class="cia-card-title">Custo do motor ligado parado</h2>
+            <p class="cia-card-sub">Por semana, ao preço do diesel acima.</p>
+            <div class="cia-chart" id="cia-chart-idle"></div>
+          </section>
+        </div>
+
+        <section class="cia-card">
+          <h2 class="cia-card-title">Os 5 que mais pioraram</h2>
+          <p class="cia-card-sub" id="cia-worse-sub"></p>
+          <ol class="cia-rows" id="cia-worse"></ol>
+          <p class="cia-note" id="cia-worse-empty" hidden>Nenhum veículo piorou de forma relevante nesta semana.</p>
+        </section>
+
+        <section class="cia-card">
+          <h2 class="cia-card-title">Os 5 que mais melhoraram</h2>
+          <p class="cia-card-sub">Bons exemplos para reconhecer e repetir.</p>
+          <ol class="cia-rows" id="cia-better"></ol>
+          <p class="cia-note" id="cia-better-empty" hidden>Nenhum veículo melhorou de forma relevante nesta semana.</p>
+        </section>
+
+        <p class="cia-note">Cada veículo é comparado com a própria média das 4 semanas anteriores, não com os outros, porque rota e carga mudam de um caminhão para outro. Só entram semanas com 300 km ou mais, e variações menores que 3% são tratadas como normais.</p>
+      </div>
+    </div>
   </main>
-  <script src="combustivelia.js?v=0.5.0"></script>
+  <script src="combustivelia.js?v=0.6.0"></script>
 </body>
 </html>
