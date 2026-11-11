@@ -121,7 +121,8 @@
 .cia-row-body { padding: 4px 18px 20px 60px; display: flex; flex-direction: column; gap: 16px; }
 .cia-row-action { background: var(--cia-card); border-radius: 14px; padding: 16px 18px; }
 .cia-row-action .cia-action-body { margin: 10px 0 0; grid-template-columns: 128px 1fr; }
-.cia-row-ok, .cia-row-fuel { margin: 0; font-size: 14px; color: var(--cia-text); }
+.cia-row-ok, .cia-row-fuel { margin: 0; font-size: 14px; line-height: 1.45; color: var(--cia-text); }
+.cia-row-action .cia-row-ok { margin-top: 6px; }
 .cia-row-label { margin: 0; font-size: 13px; font-weight: 600; color: var(--cia-ink); }
 .cia-row-drivers .cia-drivers { margin-top: 8px; }
 @media (prefers-reduced-motion: reduce) { .cia-row-chevron { transition: none; } }

@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '0.6.0';
+  var VERSION = '0.6.1';
   var DAYS = 7;
   var TOP_VEHICLES = 10;
   var TOP_DRIVERS = 3;
@@ -503,7 +503,21 @@
 
   /** Uma linha por veículo: o essencial à vista; o porquê, o que verificar e a
    *  sugestão de ação abrem com um clique. */
-  function vehicleRow(v, rank, actions, open) {
+  /** Por que um veículo não virou ação: o assessor também explica o normal. */
+  function normalReason(v, fleetRate) {
+    var own = pctFmt.format(v.share), fleet = pctFmt.format(fleetRate);
+    if (!(fleetRate > 0) || v.share < OUTLIER * fleetRate) {
+      return 'O motor fica ligado parado ' + own + ' do tempo, ' + (v.share <= fleetRate ? 'abaixo' : 'perto') + ' da média da frota (' + fleet + '). ' +
+        'Nenhum motorista se destaca dos colegas e não há esperas longas. Nada fora do padrão nesta semana.';
+    }
+    if (v.cost < MIN_WEEK_COST) {
+      return 'O motor fica ligado parado ' + own + ' do tempo, acima da média da frota (' + fleet + '), mas o custo na semana (' +
+        brl.format(v.cost) + ') é pequeno demais para virar ação. Vale acompanhar se continuar subindo.';
+    }
+    return 'O tempo parado (' + own + ' contra ' + fleet + ' da frota) não aponta para um motorista, para o caminhão nem para esperas longas.';
+  }
+
+  function vehicleRow(v, rank, actions, open, fleetRate) {
     var li = el('li', 'cia-row');
     var details = el('details', 'cia-row-details');
     if (open) details.open = true;
@@ -524,7 +538,12 @@
 
     var body = el('div', 'cia-row-body');
     if (actions.length) actions.forEach(function (a) { body.appendChild(actionBlock(a)); });
-    else body.appendChild(el('p', 'cia-row-ok', 'Sem ação sugerida: o tempo parado deste veículo está dentro do normal da frota.'));
+    else {
+      var ok = el('div', 'cia-row-action');
+      ok.appendChild(el('span', 'cia-tag', 'Dentro do normal'));
+      ok.appendChild(el('p', 'cia-row-ok', normalReason(v, fleetRate)));
+      body.appendChild(ok);
+    }
     var fuelText = v.estimated ? '≈ ' + liters(v.liters) + ' estimados' : liters(v.liters) + ' medidos pelo veículo';
     body.appendChild(el('p', 'cia-row-fuel', 'Diesel queimado parado: ' + fuelText + '.'));
     body.appendChild(driversBlock(v));
@@ -536,25 +555,35 @@
   function renderTop(s, advice) {
     var byVehicle = {};
     advice.all.forEach(function (a) { (byVehicle[a.vehicleId] = byVehicle[a.vehicleId] || []).push(a); });
-    var rows = s.ranking.slice(0, TOP_VEHICLES);
+    function priority(v) {
+      return (byVehicle[v.id] || []).reduce(function (x, a) { return x + a.sortKey; }, 0);
+    }
+    // Quem tem ação sugerida vem primeiro, em ordem de valor; depois, os de maior gasto.
+    var ordered = s.ranking.slice().sort(function (a, b) {
+      var pa = priority(a), pb = priority(b);
+      if ((pa > 0) !== (pb > 0)) return pb > 0 ? 1 : -1;
+      return pa !== pb ? pb - pa : b.cost - a.cost;
+    });
+    var rows = ordered.slice(0, TOP_VEHICLES);
     var list = $('cia-ranking');
     clear(list);
-    var withAction = 0, value = 0, opened = false;
+    var opened = false;
     rows.forEach(function (v, i) {
       var acts = byVehicle[v.id] || [];
-      if (acts.length) withAction += 1;
-      acts.forEach(function (a) { value += a.value; });
       var open = !opened && acts.length > 0;
       if (open) opened = true;
-      list.appendChild(vehicleRow(v, i + 1, acts, open));
+      list.appendChild(vehicleRow(v, i + 1, acts, open, s.share));
     });
+    var withAction = Object.keys(byVehicle).length;
+    var value = advice.all.reduce(function (x, a) { return x + a.value; }, 0);
     var sub;
     if (!rows.length) sub = '';
-    else if (!withAction) sub = 'Nenhuma ação urgente: o motor ligado parado está dentro do normal da frota.';
+    else if (!withAction) sub = 'Nenhuma ação urgente: todos os veículos ficam perto da média da frota (' + pctFmt.format(s.share) +
+      ' do tempo de motor ligado). Clique em um veículo para ver por que ele está dentro do normal.';
     else {
       sub = (withAction === 1 ? '1 veículo tem' : withAction + ' veículos têm') + ' ação sugerida';
       sub += value > 0 ? ', que pode recuperar até ' + brl.format(value) + ' por mês.' : '.';
-      sub += ' Clique em um veículo para ver o porquê e o que fazer.';
+      sub += ' Eles vêm primeiro, em ordem de valor; depois, os de maior gasto. Clique para ver o porquê.';
     }
     $('cia-ranking-title').textContent = rows.length < TOP_VEHICLES ? 'Veículos com motor ligado parado' : 'Top ' + TOP_VEHICLES + ' veículos';
     $('cia-ranking-sub').textContent = sub;
@@ -669,6 +698,11 @@
     clear(worse); clear(better);
     e.worse.forEach(function (m, i) { worse.appendChild(moverRow(m, i + 1, true)); });
     e.better.forEach(function (m, i) { better.appendChild(moverRow(m, i + 1, false)); });
+    var why = e.compared === 0
+      ? 'Nenhum veículo rodou 300 km ou mais na semana com consumo registrado, então ainda não há comparação justa.'
+      : null;
+    $('cia-worse-empty').textContent = why || 'Nenhum veículo ficou mais de 3% menos eficiente que a própria média das 4 semanas anteriores. Numa semana normal, é o esperado.';
+    $('cia-better-empty').textContent = why || 'Nenhum veículo ficou mais de 3% mais eficiente que a própria média das 4 semanas anteriores.';
     $('cia-worse-empty').hidden = e.worse.length > 0;
     $('cia-better-empty').hidden = e.better.length > 0;
     var total = e.worse.reduce(function (x, m) { return x + m.value; }, 0);
