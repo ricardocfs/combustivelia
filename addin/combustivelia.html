@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Combustível IA</title>
   <link rel="icon" href="icone.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="combustivelia.css?v=0.6.3">
+  <link rel="stylesheet" href="combustivelia.css?v=0.7.0">
 </head>
 <body>
   <main id="combustivelia" class="cia-root" aria-live="polite">
@@ -31,27 +31,30 @@
     </div>
 
     <div id="cia-panel-semana" role="tabpanel" aria-labelledby="cia-tab-semana">
-
     <section class="cia-kpis" id="cia-kpis" hidden>
+      <div class="cia-kpi">
+        <p class="cia-kpi-label">Recuperável por mês</p>
+        <p class="cia-kpi-value" id="cia-kpi-value">—</p>
+        <p class="cia-kpi-note" id="cia-kpi-value-note"></p>
+      </div>
       <div class="cia-kpi">
         <p class="cia-kpi-label">Custo do motor ligado parado</p>
         <p class="cia-kpi-value" id="cia-kpi-cost">—</p>
-      </div>
-      <div class="cia-kpi">
-        <p class="cia-kpi-label">Diesel queimado parado</p>
-        <p class="cia-kpi-value" id="cia-kpi-liters">—</p>
-      </div>
-      <div class="cia-kpi">
-        <p class="cia-kpi-label">Horas com motor ligado parado</p>
-        <p class="cia-kpi-value" id="cia-kpi-hours">—</p>
         <p class="cia-kpi-note" id="cia-kpi-share"></p>
       </div>
       <div class="cia-kpi">
-        <p class="cia-kpi-label">Veículos analisados</p>
-        <p class="cia-kpi-value" id="cia-kpi-vehicles">—</p>
+        <p class="cia-kpi-label">Veículos com ação sugerida</p>
+        <p class="cia-kpi-value" id="cia-kpi-acting">—</p>
+        <p class="cia-kpi-note" id="cia-kpi-vehicles"></p>
       </div>
     </section>
 
+    <section class="cia-card" id="cia-leak-card" hidden>
+      <h2 class="cia-card-title">Por onde o diesel está vazando</h2>
+      <p class="cia-card-sub" id="cia-leak-sub"></p>
+      <div class="cia-leak-bar" id="cia-leak-bar" hidden></div>
+      <div class="cia-leak" id="cia-leak"></div>
+    </section>
 
     <section class="cia-card" id="cia-ranking-card" hidden>
       <h2 class="cia-card-title" id="cia-ranking-title">Top 10 veículos</h2>
@@ -77,12 +80,7 @@
           <div class="cia-kpi">
             <p class="cia-kpi-label">Gasto com diesel na última semana</p>
             <p class="cia-kpi-value" id="cia-evo-cost">—</p>
-            <p class="cia-kpi-note" id="cia-evo-liters"></p>
-          </div>
-          <div class="cia-kpi">
-            <p class="cia-kpi-label">Gasto a mais que o normal</p>
-            <p class="cia-kpi-value" id="cia-evo-extra">—</p>
-            <p class="cia-kpi-note" id="cia-evo-extra-note"></p>
+            <p class="cia-kpi-note" id="cia-evo-cost-note"></p>
           </div>
           <div class="cia-kpi">
             <p class="cia-kpi-label">Eficiência da frota</p>
@@ -90,43 +88,56 @@
             <p class="cia-kpi-note" id="cia-evo-kml-note"></p>
           </div>
           <div class="cia-kpi">
-            <p class="cia-kpi-label">Veículos comparados</p>
-            <p class="cia-kpi-value" id="cia-evo-compared">—</p>
-            <p class="cia-kpi-note">com 300 km ou mais na semana</p>
+            <p class="cia-kpi-label">Custo do motor ligado parado</p>
+            <p class="cia-kpi-value" id="cia-evo-idle">—</p>
+            <p class="cia-kpi-note" id="cia-evo-idle-note"></p>
+          </div>
+          <div class="cia-kpi">
+            <p class="cia-kpi-label">Veículos contra a própria média</p>
+            <p class="cia-kpi-value" id="cia-evo-moves">—</p>
+            <p class="cia-kpi-note" id="cia-evo-moves-note"></p>
           </div>
         </section>
 
         <div class="cia-charts">
           <section class="cia-card">
-            <h2 class="cia-card-title">Custo do motor ligado parado</h2>
+            <h2 class="cia-card-title">Gasto com diesel</h2>
             <p class="cia-card-sub">Por semana, ao preço do diesel acima.</p>
-            <div class="cia-chart" id="cia-chart-idle"></div>
+            <div class="cia-chart" id="cia-chart-cost"></div>
           </section>
           <section class="cia-card">
             <h2 class="cia-card-title">Eficiência da frota (km/L)</h2>
-            <p class="cia-card-sub">Por semana, nas últimas 6 semanas.</p>
+            <p class="cia-card-sub">Por semana.</p>
             <div class="cia-chart" id="cia-chart-kml"></div>
+          </section>
+          <section class="cia-card">
+            <h2 class="cia-card-title">Custo do motor ligado parado</h2>
+            <p class="cia-card-sub">Por semana.</p>
+            <div class="cia-chart" id="cia-chart-idle"></div>
           </section>
         </div>
 
-        <section class="cia-card">
-          <h2 class="cia-card-title">Os 5 que mais pioraram</h2>
-          <p class="cia-card-sub" id="cia-worse-sub"></p>
-          <ol class="cia-rows" id="cia-worse"></ol>
-          <p class="cia-note" id="cia-worse-empty" hidden>Nenhum veículo piorou de forma relevante nesta semana.</p>
+        <section class="cia-card cia-card-link" id="cia-worse-card" hidden>
+          <div class="cia-link-row">
+            <div>
+              <h2 class="cia-card-title" id="cia-worse-title"></h2>
+              <p class="cia-card-sub cia-flush" id="cia-worse-sub"></p>
+            </div>
+            <button class="cia-button" id="cia-go-semana" type="button">Ver o que fazer</button>
+          </div>
         </section>
 
         <section class="cia-card">
           <h2 class="cia-card-title">Os 5 que mais melhoraram</h2>
-          <p class="cia-card-sub">Bons exemplos para reconhecer e repetir.</p>
+          <p class="cia-card-sub">Em ordem de economia. Bons exemplos para reconhecer e repetir.</p>
           <ol class="cia-rows" id="cia-better"></ol>
-          <p class="cia-note" id="cia-better-empty" hidden>Nenhum veículo melhorou de forma relevante nesta semana.</p>
+          <p class="cia-note" id="cia-better-empty" hidden></p>
         </section>
 
-        <p class="cia-note cia-note-page">Cada veículo é comparado com a própria média das 4 semanas anteriores, não com os outros, porque rota e carga mudam de um caminhão para outro. Só entram semanas com 300 km ou mais, e variações menores que 3% são tratadas como normais.</p>
+        <p class="cia-note cia-note-page">As duas abas usam os mesmos critérios: cada veículo é comparado com a própria média das 4 semanas anteriores, só entram semanas com 300 km ou mais e variações menores que 3% são normais. "Esta semana" mostra o que fazer; esta aba mostra a tendência e quem melhorou.</p>
       </div>
     </div>
   </main>
-  <script src="combustivelia.js?v=0.6.3"></script>
+  <script src="combustivelia.js?v=0.7.0"></script>
 </body>
 </html>
