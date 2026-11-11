@@ -1,0 +1,29 @@
+{
+  "price": 7.33,
+  "label": "média ANP do diesel S10 em outubro/2026",
+  "month": "2026-10",
+  "weeks": [
+    {
+      "from": "2026-10-04",
+      "to": "2026-10-10",
+      "price": 7.36
+    },
+    {
+      "from": "2026-10-11",
+      "to": "2026-10-17",
+      "price": 7.34
+    },
+    {
+      "from": "2026-10-18",
+      "to": "2026-10-24",
+      "price": 7.32
+    },
+    {
+      "from": "2026-10-25",
+      "to": "2026-10-31",
+      "price": 7.31
+    }
+  ],
+  "source": "ANP, Levantamento de Preços de Combustíveis (síntese semanal), média nacional de revenda do Diesel B S10; média simples das semanas inteiras do mês",
+  "updated": "2026-11-11"
+}

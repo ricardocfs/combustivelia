@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '0.8.1';
+  var VERSION = '0.8.2';
   var DAYS = 7;
   var TOP_VEHICLES = 10;
   var TOP_DRIVERS = 3;
@@ -18,8 +18,12 @@
   var OUTLIER = 1.5;            // "bem acima" = 50% acima da referência
 
   // Preço padrão: média nacional de revenda do diesel S10, ANP, semana de 18 a 24/10/2026
-  var DEFAULT_PRICE = 7.32;
-  var PRICE_SOURCE = 'média ANP do diesel S10, 18 a 24/10/2026';
+  // Preço padrão: média nacional do diesel S10 (ANP) no último mês fechado. O valor
+  // vem de diesel.json, atualizado todo mês; este é só o reserva, se o arquivo falhar.
+  var DEFAULT_PRICE = 7.33;
+  var PRICE_SOURCE = 'média ANP do diesel S10 em outubro/2026';
+  var PRICE_URL = 'https://ricardocfs.github.io/combustivelia/addin/diesel.json';
+  var dieselDefault = { price: DEFAULT_PRICE, label: PRICE_SOURCE };
   // Estimativa quando o veículo não informa o combustível gasto parado:
   // ~0,8 galão (≈3 L) por hora para caminhão pesado (Departamento de Energia dos EUA, AFDC)
   var IDLE_RATE_LPH = 3;
@@ -416,6 +420,7 @@
     var out = [];
     (e.worseAll || []).forEach(function (m) {
       if (m.value < MIN_WEEK_COST || m.kind === 'idle') return;
+      if (m.kmlBase / m.kmlLast - 1 > 0.5) return;   // mais de 50% acima da própria média: provável erro de dado
       var value = m.value * MONTH_PER_WEEK;
       var base = 'Fez ' + kmlFmt.format(m.kmlLast) + ' km/L nesta semana, contra ' + kmlFmt.format(m.kmlBase) +
         ' km/L de média nas 4 anteriores: ' + liters(m.extraLiters) + ' e ' + brl.format(m.value) + ' a mais.';
@@ -466,15 +471,29 @@
     });
     Object.keys(tripsBy).forEach(function (dev) { tripsBy[dev].sort(function (x, y) { return x.a - y.a; }); });
     var TOL = 10 * 60000;
+    var fit = {};   // por veículo: registros de combustível no período e quantos casaram com uma viagem
     (o.fuel || []).forEach(function (f) {
-      var list = tripsBy[refId(f.device)]; if (!list) return;
+      var dev = refId(f.device), list = tripsBy[dev]; if (!list) return;
       var t = new Date(f.dateTime).getTime();
+      if (!(t >= from && t <= end)) return;
+      var l = Number(f.totalFuelUsed) || 0;
+      var q = fit[dev] || (fit[dev] = { recs: 0, liters: 0, matchedRecs: 0, matchedL: 0 });
+      q.recs += 1; q.liters += l;
       for (var i = list.length - 1; i >= 0; i--) {
-        if (list[i].a <= t + TOL) { if (t <= list[i].b + TOL) list[i].liters += Number(f.totalFuelUsed) || 0; break; }
+        if (list[i].a <= t + TOL) {
+          if (t <= list[i].b + TOL) { list[i].liters += l; q.matchedRecs += 1; q.matchedL += l; }
+          break;
+        }
       }
     });
     var out = [];
     Object.keys(tripsBy).forEach(function (dev) {
+      // Só compara motoristas quando o combustível vem por viagem e casa com as viagens.
+      // Se a base registra o combustível por dia ou por período, a divisão entre motoristas
+      // sai distorcida, e o assessor prefere não dizer nada a dizer algo errado.
+      var q = fit[dev], tripsKm = tripsBy[dev].filter(function (t) { return t.km > 0; }).length;
+      if (!q || !(q.liters > 0) || q.matchedL / q.liters < 0.8) return;
+      if (!tripsKm || q.matchedRecs / tripsKm < 0.6 || q.matchedRecs / tripsKm > 1.6) return;
       var by = {}, totKm = 0, totL = 0;
       tripsBy[dev].forEach(function (t) {
         if (!(t.km > 0) || !(t.liters > 0) || !t.driver || t.driver === UNKNOWN_DRIVER) return;
@@ -487,6 +506,7 @@
         if (d.km < MIN_KM_DRIVER || pKm < MIN_KM_DRIVER || !(pL > 0)) return;
         var kmlD = d.km / d.liters, kmlP = pKm / pL;
         if (kmlD > (1 - DRIVER_GAP) * kmlP) return;
+        if (kmlD < 0.6 * kmlP) return;   // diferença grande demais para ser só jeito de dirigir: provável erro de dado
         var extra = d.liters - d.km / kmlP;
         var value = extra * o.price * (30 / DRIVER_DAYS);
         if (!best || value > best.value) best = { id: id, kmlD: kmlD, kmlP: kmlP, extra: extra, value: value };
@@ -626,19 +646,29 @@
   var brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
   var litersFmt = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
   var priceFmt = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var brl2 = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
   function hours(s) { return hoursFmt.format(s / 3600) + ' h'; }
   function liters(l) { return litersFmt.format(l) + ' L'; }
 
   // ---- preço do diesel (por usuário, neste navegador) ---------------------------
   var PRICE_KEY = 'combustivelia.dieselPrice';
-  function readPrice() {
-    try {
-      var v = Number(window.localStorage.getItem(PRICE_KEY));
-      return v > 0 ? v : DEFAULT_PRICE;
-    } catch (e) { return DEFAULT_PRICE; }
+  function userPrice() {
+    try { var v = Number(window.localStorage.getItem(PRICE_KEY)); return v > 0 ? v : null; } catch (e) { return null; }
   }
+  function readPrice() { return userPrice() || dieselDefault.price; }
   function savePrice(v) {
-    try { window.localStorage.setItem(PRICE_KEY, String(v)); } catch (e) { /* sem armazenamento: vale só nesta visita */ }
+    try {
+      if (v === null || Math.abs(v - dieselDefault.price) < 0.005) window.localStorage.removeItem(PRICE_KEY);
+      else window.localStorage.setItem(PRICE_KEY, String(v));
+    } catch (e) { /* sem armazenamento: vale só nesta visita */ }
+  }
+  /** Busca a média do último mês publicada em diesel.json; se falhar, fica o reserva. */
+  function loadDieselDefault() {
+    if (typeof fetch !== 'function') return Promise.resolve();
+    return fetch(PRICE_URL + '?t=' + new Date().toISOString().slice(0, 10), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { if (j && j.price > 0 && j.price < 100) dieselDefault = { price: Number(j.price), label: String(j.label || PRICE_SOURCE) }; })
+      .catch(function () { /* fica o reserva */ });
   }
   function parsePrice(text) {
     var v = Number(String(text).replace(/\s|R\$/g, '').replace(',', '.'));
@@ -744,7 +774,7 @@
     side.appendChild(el('span', 'cia-row-cost' + (impact.tier === 1 ? ' cia-row-cost-normal' : ''), impact.label));
     var lead = actions.filter(function (a) { return a.type !== 'dados'; })[0] || actions[0];
     side.appendChild(el('span', 'cia-row-hint' + (lead ? ' cia-row-hint-action' : ''),
-      lead ? lead.short + (actions.length > 1 ? ' + ' + (actions.length - 1) : '') : 'Dentro do normal'));
+      lead ? lead.tag + ' · ' + lead.short + (actions.length > 1 ? ' + ' + (actions.length - 1) : '') : 'Dentro do normal'));
     summary.appendChild(side);
     summary.appendChild(el('span', 'cia-row-chevron', '›'));
     details.appendChild(summary);
@@ -1102,7 +1132,15 @@
 
     var input = $('cia-price');
     if (document.activeElement !== input) input.value = priceFmt.format(price);
-    $('cia-price-source').textContent = price === DEFAULT_PRICE ? PRICE_SOURCE : 'valor informado por você';
+    var src = $('cia-price-source');
+    clear(src);
+    if (userPrice()) {
+      src.appendChild(document.createTextNode('valor informado por você · '));
+      var back = el('button', 'cia-linkbutton', 'usar a média ANP (' + brl2.format(dieselDefault.price) + ')');
+      back.type = 'button';
+      back.addEventListener('click', function () { savePrice(null); render(); });
+      src.appendChild(back);
+    } else src.textContent = dieselDefault.label;
 
     renderTop(s, actions, last.devices, e ? e.byVehicle : null);
     $('cia-ranking-card').hidden = false;
@@ -1160,7 +1198,8 @@
       call(api, 'Get', { typeName: 'User', search: { isDriver: true } }),
       safe(call(api, 'Get', { typeName: 'StatusData', search: signal(DIAG.idleFuel) })),
       fuelP,
-      safe(call(api, 'Get', { typeName: 'FaultData', search: { fromDate: new Date(end.getTime() - TREND_WEEKS * WEEK_MS).toISOString(), toDate: to } }))
+      safe(call(api, 'Get', { typeName: 'FaultData', search: { fromDate: new Date(end.getTime() - TREND_WEEKS * WEEK_MS).toISOString(), toDate: to } })),
+      loadDieselDefault()
     ]).then(function (res) {
       var devices = res[0], trips6 = res[1], users = res[2];
       var inFilter = {};
