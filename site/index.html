@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Combustível IA · O assessor de diesel da sua frota</title>
+  <meta name="description" content="Toda segunda-feira, saiba quais caminhões queimaram diesel a mais, quanto isso custou e o que fazer nesta semana. Funciona dentro do MyGeotab, sem instalar equipamento.">
+  <meta property="og:title" content="Combustível IA · O assessor de diesel da sua frota">
+  <meta property="og:description" content="Quais caminhões queimaram diesel a mais, quanto custou e o que fazer nesta semana.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://combustivelia.com.br/">
+  <meta property="og:image" content="https://combustivelia.com.br/icone-192.png">
+  <link rel="icon" href="icone.svg" type="image/svg+xml">
+  <link rel="icon" href="icone-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="icone-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F5F5F7;
+      --card: #FFFFFF;
+      --ink: #1D1D1F;
+      --ink-2: #424245;
+      --ink-3: #6E6E73;
+      --line: #D2D2D7;
+      --blue: #0066CC;
+      --blue-dark-bg: #2997FF;
+      --navy: #0A1A33;
+      --radius: 18px;
+      --max: 1080px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 17px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    a:focus-visible, button:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; border-radius: 6px; }
+    .wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+    .skip { position: absolute; left: -9999px; }
+    .skip:focus { left: 16px; top: 16px; background: var(--card); padding: 8px 12px; z-index: 10; }
+
+    /* Cabeçalho */
+    header.top {
+      position: sticky; top: 0; z-index: 5;
+      background: rgba(245, 245, 247, 0.86);
+      backdrop-filter: saturate(180%) blur(16px);
+      -webkit-backdrop-filter: saturate(180%) blur(16px);
+      border-bottom: 1px solid var(--line);
+    }
+    .top-inner { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 16px; }
+    .brand { display: flex; align-items: center; }
+    .brand img { height: 30px; width: auto; display: block; }
+    nav.menu { display: flex; align-items: center; gap: 28px; font-size: 14px; }
+    nav.menu a { color: var(--ink-2); }
+    nav.menu a.cta-small { color: var(--blue); font-weight: 600; }
+    @media (max-width: 760px) { nav.menu a:not(.cta-small) { display: none; } }
+
+    /* Tipografia */
+    h1, h2, h3 { margin: 0; letter-spacing: -0.02em; color: var(--ink); }
+    h1 { font-size: clamp(40px, 7vw, 72px); line-height: 1.04; font-weight: 700; }
+    h2 { font-size: clamp(30px, 4.6vw, 48px); line-height: 1.08; font-weight: 700; }
+    h3 { font-size: 21px; line-height: 1.25; font-weight: 600; }
+    .eyebrow { font-size: 15px; font-weight: 600; color: var(--blue); margin: 0 0 12px; letter-spacing: 0; }
+    .lead { font-size: clamp(19px, 2.4vw, 24px); line-height: 1.4; color: var(--ink-2); margin: 20px 0 0; max-width: 760px; }
+    p { margin: 0; }
+    .muted { color: var(--ink-3); }
+
+    section { padding: 96px 0; }
+    section + section { padding-top: 0; }
+    .section-head { max-width: 780px; margin-bottom: 48px; }
+
+    /* Botões */
+    .actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 36px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 48px; padding: 0 24px; border-radius: 999px;
+      font-size: 17px; font-weight: 600; text-decoration: none;
+    }
+    .btn:hover { text-decoration: none; }
+    .btn-primary { background: var(--blue); color: #FFFFFF; }
+    .btn-primary:hover { background: #0058B0; }
+    .btn-link { color: var(--blue); padding: 0 8px; }
+    .btn-link:hover { text-decoration: underline; }
+
+    /* Hero */
+    .hero { padding: 104px 0 96px; }
+    .hero .tag { font-size: 15px; color: var(--ink-3); margin-top: 28px; }
+
+    /* Cartões */
+    .card { background: var(--card); border-radius: var(--radius); padding: 32px; }
+    .grid-3 { display: grid; gap: 20px; grid-template-columns: repeat(3, 1fr); }
+    .grid-2 { display: grid; gap: 20px; grid-template-columns: repeat(2, 1fr); }
+    @media (max-width: 860px) { .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+
+    /* A conta */
+    .math { display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; align-items: stretch; }
+    @media (max-width: 860px) { .math { grid-template-columns: 1fr; } }
+    .math > .card:first-child { display: flex; flex-direction: column; justify-content: center; }
+    .math .big { font-size: clamp(44px, 6vw, 64px); font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--ink); }
+    .math .big.accent { color: var(--blue); }
+    .math .label { font-size: 15px; color: var(--ink-3); margin-top: 10px; }
+    .math .rows > div { padding: 18px 0; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 16px; }
+    .math .rows > div:first-child { border-top: 0; padding-top: 0; }
+    .math .rows span:last-child { font-weight: 600; white-space: nowrap; }
+    .note { font-size: 14px; color: var(--ink-3); margin-top: 20px; }
+
+    /* Passos */
+    .step-num {
+      width: 36px; height: 36px; border-radius: 50%; background: var(--navy); color: #FFFFFF;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 16px; margin-bottom: 20px;
+    }
+    .card p.body { color: var(--ink-2); margin-top: 10px; }
+
+    /* Relatório de exemplo */
+    .report { background: var(--card); border-radius: 24px; padding: 40px; }
+    @media (max-width: 600px) { .report { padding: 24px; } }
+    .report-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+    .report-head .when { font-size: 14px; color: var(--ink-3); }
+    .report-title { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-top: 4px; }
+    .pill { font-size: 13px; color: var(--ink-3); background: var(--bg); padding: 6px 12px; border-radius: 999px; white-space: nowrap; }
+    .kpi-row { display: grid; grid-template-columns: 1fr 1.4fr; gap: 40px; margin-top: 32px; padding-bottom: 32px; border-bottom: 1px solid var(--line); }
+    @media (max-width: 760px) { .kpi-row { grid-template-columns: 1fr; gap: 28px; } }
+    .kpi-label { font-size: 14px; color: var(--ink-3); }
+    .kpi-value { font-size: clamp(40px, 5vw, 52px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; margin-top: 6px; }
+    .kpi-value small { font-size: 0.42em; font-weight: 600; color: var(--ink-3); letter-spacing: 0; }
+    .kpi-sub { font-size: 14px; color: var(--ink-3); margin-top: 6px; }
+    .leak { display: grid; gap: 14px; margin-top: 12px; }
+    .leak-row { display: grid; grid-template-columns: 92px 1fr 92px; align-items: center; gap: 12px; font-size: 15px; }
+    .leak-row .name { color: var(--ink-2); }
+    .leak-row .val { text-align: right; font-weight: 600; }
+    .bar { height: 10px; background: var(--bg); border-radius: 999px; overflow: hidden; }
+    .bar > i { display: block; height: 100%; background: var(--blue); border-radius: 999px; }
+    .bar.b2 > i { background: #4D94DB; }
+    .bar.b3 > i { background: #99C2EB; }
+
+    .act-title { font-size: 15px; font-weight: 600; color: var(--ink-3); margin: 32px 0 4px; }
+    .act { display: grid; grid-template-columns: 36px 1fr auto; gap: 16px; padding: 24px 0; border-top: 1px solid var(--line); }
+    .act-title + .act { border-top: 0; }
+    .act .n { width: 30px; height: 30px; border-radius: 50%; background: var(--navy); color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; }
+    .act h4 { margin: 2px 0 10px; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+    .act dl { margin: 0; display: grid; grid-template-columns: 96px 1fr; gap: 6px 12px; font-size: 15px; }
+    .act dt { color: var(--ink-3); }
+    .act dd { margin: 0; color: var(--ink-2); }
+    .act .value { text-align: right; white-space: nowrap; }
+    .act .value strong { display: block; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+    .act .value span { font-size: 13px; color: var(--ink-3); }
+    @media (max-width: 640px) {
+      .act { grid-template-columns: 30px 1fr; }
+      .act .value { grid-column: 2; text-align: left; }
+      .act dl { grid-template-columns: 1fr; gap: 2px; }
+      .act dt { margin-top: 8px; }
+      .leak-row { grid-template-columns: 80px 1fr 80px; }
+    }
+    .report-foot { font-size: 13px; color: var(--ink-3); margin-top: 8px; padding-top: 20px; border-top: 1px solid var(--line); }
+
+    /* Frentes */
+    .front h3 { margin-bottom: 4px; }
+    .front .who { font-size: 14px; color: var(--ink-3); }
+    .front ul { margin: 18px 0 0; padding: 0; list-style: none; }
+    .front li { padding: 12px 0; border-top: 1px solid var(--line); color: var(--ink-2); font-size: 16px; }
+
+    /* Princípios */
+    .principles { background: var(--card); border-radius: var(--radius); padding: 8px 32px; }
+    .principle { display: grid; grid-template-columns: 280px 1fr; gap: 24px; padding: 26px 0; border-top: 1px solid var(--line); }
+    .principle:first-child { border-top: 0; }
+    .principle h3 { font-size: 19px; }
+    .principle p { color: var(--ink-2); }
+    @media (max-width: 760px) { .principle { grid-template-columns: 1fr; gap: 8px; } }
+
+    /* Comparação */
+    .compare h3 { font-size: 19px; margin-bottom: 14px; }
+    .compare ul { margin: 0; padding: 0; list-style: none; }
+    .compare li { padding: 12px 0; border-top: 1px solid var(--line); color: var(--ink-2); font-size: 16px; }
+    .compare .ours h3 { color: var(--blue); }
+
+    /* Para quem */
+    .fit dt { font-weight: 600; margin-top: 22px; }
+    .fit dt:first-child { margin-top: 0; }
+    .fit dd { margin: 4px 0 0; color: var(--ink-2); }
+
+    /* Faixa escura */
+    .band { background: var(--navy); color: #FFFFFF; border-radius: 28px; padding: 64px 56px; }
+    @media (max-width: 600px) { .band { padding: 40px 24px; } }
+    .band h2 { color: #FFFFFF; }
+    .band .eyebrow { color: var(--blue-dark-bg); }
+    .band .lead { color: #D2D2D7; }
+    .band ul { margin: 32px 0 0; padding: 0; list-style: none; display: grid; gap: 14px; max-width: 720px; }
+    .band li { display: grid; grid-template-columns: 22px 1fr; gap: 12px; color: #F5F5F7; }
+    .band li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--blue-dark-bg); margin-top: 9px; }
+    .band .btn-primary { background: #FFFFFF; color: var(--navy); }
+    .band .btn-primary:hover { background: #E8E8ED; }
+    .band .btn-link { color: var(--blue-dark-bg); }
+
+    footer { padding: 48px 0 64px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-3); }
+    .foot { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: center; }
+    .foot img { height: 24px; display: block; }
+    .foot p + p { margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#conteudo">Ir para o conteúdo</a>
+
+  <header class="top">
+    <div class="wrap top-inner">
+      <a class="brand" href="#" aria-label="Combustível IA, início"><img src="logo.svg" alt="Combustível IA" width="129" height="30"></a>
+      <nav class="menu" aria-label="Seções">
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#relatorio">O relatório</a>
+        <a href="#para-quem">Para quem</a>
+        <a class="cta-small" href="#fundadoras">Seja frota fundadora</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="conteudo">
+
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">O assessor de diesel da sua frota</p>
+        <h1>Toda segunda-feira, saiba onde o diesel está vazando.</h1>
+        <p class="lead">Quais caminhões queimaram diesel a mais, quanto isso custou em reais e o que fazer nesta semana. Uma lista curta de ações, em ordem de valor, a partir da telemetria que sua frota já paga.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#fundadoras">Pedir o Raio-X grátis</a>
+          <a class="btn btn-link" href="#relatorio">Ver um relatório de exemplo ›</a>
+        </div>
+        <p class="tag">Funciona dentro do MyGeotab. Sem instalar nenhum equipamento.</p>
+      </div>
+    </section>
+
+    <section id="proposito">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">Por que existe</p>
+          <h2>Os dados mostram quanto você gastou. Ninguém diz o que fazer.</h2>
+          <p class="lead">Diesel é o maior custo variável de uma transportadora. A telemetria registra cada litro, mas entrega gráficos e alertas soltos. Sobra para o gestor descobrir, sozinho, qual caminhão olhar primeiro e por quê. O Combustível IA faz esse trabalho e entrega a resposta pronta.</p>
+        </div>
+        <div class="math">
+          <div class="card">
+            <p class="kpi-label">Um caminhão pesado, 10 mil km por mês a 2,5 km/L</p>
+            <p class="big" style="margin-top:14px">R$ 29 mil</p>
+            <p class="label">em diesel todo mês</p>
+            <p class="big accent" style="margin-top:32px">R$ 590</p>
+            <p class="label">por mês a cada 2% de consumo recuperado</p>
+          </div>
+          <div class="card">
+            <h3>A conta, por caminhão</h3>
+            <div class="rows" style="margin-top:20px">
+              <div><span>Litros por mês</span><span>4.000 L</span></div>
+              <div><span>Preço do diesel S10 (média ANP, out/2026)</span><span>R$ 7,33/L</span></div>
+              <div><span>Gasto por mês</span><span>R$ 29.320</span></div>
+              <div><span>2% recuperado</span><span>R$ 586</span></div>
+              <div><span>Numa frota de 50 caminhões</span><span>R$ 29 mil/mês</span></div>
+            </div>
+            <p class="note">Estimativa ilustrativa. O resultado real depende da frota, das rotas e da carga.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="como-funciona">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">Como funciona</p>
+          <h2>Liga em minutos. Trabalha toda semana.</h2>
+        </div>
+        <div class="grid-3">
+          <div class="card">
+            <span class="step-num">1</span>
+            <h3>Conecta ao MyGeotab</h3>
+            <p class="body">O administrador instala o Add-In em poucos cliques. Sem equipamento novo, sem parar caminhão, sem cadastro manual de veículos.</p>
+          </div>
+          <div class="card">
+            <span class="step-num">2</span>
+            <h3>Lê o que a frota já envia</h3>
+            <p class="body">Consumo, quilometragem, motor ligado parado, velocidade, rotação, falhas do motor e quem dirigiu cada viagem.</p>
+          </div>
+          <div class="card">
+            <span class="step-num">3</span>
+            <h3>Entrega as ações da semana</h3>
+            <p class="body">Toda segunda, uma lista curta do que fazer, com a causa provável e quanto cada ação vale em reais. Em um minuto você sabe por onde começar.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="relatorio">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">O relatório de segunda-feira</p>
+          <h2>Ação primeiro. Gráfico depois.</h2>
+          <p class="lead">O relatório abre pelo dinheiro em jogo e termina numa lista do que fazer. Cada ação diz o quê, quem, por quê, o que conferir antes, o próximo passo e quanto vale.</p>
+        </div>
+
+        <article class="report" aria-label="Relatório de exemplo">
+          <div class="report-head">
+            <div>
+              <p class="when">Última semana · 9 a 15 de novembro</p>
+              <p class="report-title">Sua frota na última semana</p>
+            </div>
+            <span class="pill">Exemplo com dados fictícios</span>
+          </div>
+
+          <div class="kpi-row">
+            <div>
+              <p class="kpi-label">Recuperável por mês</p>
+              <p class="kpi-value">até R$ 9.800</p>
+              <p class="kpi-sub">48 caminhões analisados · diesel a R$ 7,33/L</p>
+            </div>
+            <div>
+              <p class="kpi-label">Por onde o diesel está vazando</p>
+              <div class="leak">
+                <div class="leak-row"><span class="name">Mecânica</span><span class="bar"><i style="width:100%"></i></span><span class="val">R$ 4.600</span></div>
+                <div class="leak-row"><span class="name">Condução</span><span class="bar b2"><i style="width:76%"></i></span><span class="val">R$ 3.500</span></div>
+                <div class="leak-row"><span class="name">Operação</span><span class="bar b3"><i style="width:37%"></i></span><span class="val">R$ 1.700</span></div>
+              </div>
+            </div>
+          </div>
+
+          <p class="act-title">Ações da semana, em ordem de valor</p>
+
+          <div class="act">
+            <span class="n">1</span>
+            <div>
+              <h4>Levar o caminhão BRA2E19 à oficina</h4>
+              <dl>
+                <dt>Quem</dt><dd>Oficina</dd>
+                <dt>Por quê</dt><dd>Consumo por km 12% acima da própria média das últimas 4 semanas, com falhas de injeção registradas.</dd>
+                <dt>Verifique</dt><dd>Se mudou a carga ou a rota antes de abrir o motor.</dd>
+                <dt>Sugestão</dt><dd>Revisar bicos injetores e filtro de ar nesta semana.</dd>
+              </dl>
+            </div>
+            <p class="value"><strong>R$ 2.400</strong><span>até, por mês</span></p>
+          </div>
+
+          <div class="act">
+            <span class="n">2</span>
+            <div>
+              <h4>Conversar com o motorista sobre motor ligado parado</h4>
+              <dl>
+                <dt>Quem</dt><dd>Gestor da frota</dd>
+                <dt>Por quê</dt><dd>9 horas de motor ligado parado na semana no caminhão RIO4B07, três vezes a média dos colegas no mesmo caminhão.</dd>
+                <dt>Verifique</dt><dd>Se as paradas foram espera de carga ou descarga.</dd>
+                <dt>Sugestão</dt><dd>Orientar a desligar o motor em paradas acima de 5 minutos.</dd>
+              </dl>
+            </div>
+            <p class="value"><strong>R$ 1.300</strong><span>até, por mês</span></p>
+          </div>
+
+          <div class="act">
+            <span class="n">3</span>
+            <div>
+              <h4>Rever a janela de descarga no CD de Araucária</h4>
+              <dl>
+                <dt>Quem</dt><dd>Operação</dd>
+                <dt>Por quê</dt><dd>14 esperas acima de 2 horas no mesmo local, com motor ligado, em 6 caminhões diferentes.</dd>
+                <dt>Verifique</dt><dd>Se o atraso é do cliente ou do agendamento.</dd>
+                <dt>Sugestão</dt><dd>Negociar horário fixo de descarga com o cliente.</dd>
+              </dl>
+            </div>
+            <p class="value"><strong>R$ 900</strong><span>até, por mês</span></p>
+          </div>
+
+          <p class="report-foot">Valores sempre como "até": são estimativas a partir dos dados da semana. Quando faltam dados, o relatório diz o que falta.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="frentes">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">As três frentes</p>
+          <h2>Separa caminhão, pessoa e operação antes de apontar alguém.</h2>
+          <p class="lead">Consumo alto é sintoma. Cada desvio é atribuído à causa mais provável, para que a ação vá para quem pode resolver.</p>
+        </div>
+        <div class="grid-3">
+          <div class="card front">
+            <h3>Mecânica</h3>
+            <p class="who">Para a oficina</p>
+            <ul>
+              <li>Caminhão consumindo mais por km que a própria média</li>
+              <li>Ligado a falhas registradas do motor</li>
+              <li>Aumento sem causa na condução vira revisão preventiva</li>
+            </ul>
+          </div>
+          <div class="card front">
+            <h3>Condução</h3>
+            <p class="who">Para conversar com o motorista</p>
+            <ul>
+              <li>Motor ligado parado, por motorista e em reais</li>
+              <li>Consumo comparado aos colegas no mesmo caminhão</li>
+              <li>Motorista novo ou velocidade maior como causa</li>
+            </ul>
+          </div>
+          <div class="card front">
+            <h3>Operação</h3>
+            <p class="who">Para o planejamento</p>
+            <ul>
+              <li>Esperas longas com motor ligado</li>
+              <li>Locais e clientes onde a frota mais espera</li>
+              <li>Ajustes de rota e janela de entrega</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="diferenca">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">O que muda para o gestor</p>
+          <h2>Um assessor, não mais um painel.</h2>
+        </div>
+        <div class="grid-2 compare" style="margin-bottom:20px">
+          <div class="card">
+            <h3>Um painel de telemetria</h3>
+            <ul>
+              <li>Mostra quanto se gastou</li>
+              <li>Dezenas de gráficos para interpretar</li>
+              <li>Alertas soltos, sem prioridade</li>
+              <li>Ranking que culpa o motorista</li>
+            </ul>
+          </div>
+          <div class="card ours">
+            <h3>Combustível IA</h3>
+            <ul>
+              <li>Diz o que fazer e quanto vale</li>
+              <li>Poucas ações, em ordem de valor</li>
+              <li>Causa provável: mecânica, condução ou operação</li>
+              <li>Comparação justa, com tom de orientação</li>
+            </ul>
+          </div>
+        </div>
+        <div class="principles">
+          <div class="principle">
+            <h3>Prioriza pelo dinheiro</h3>
+            <p>Toda lista é ordenada em reais. Quando duas coisas competem, aparece primeiro a que vale mais. Abaixo de R$ 25 por semana, não vira ação.</p>
+          </div>
+          <div class="principle">
+            <h3>Compara de forma justa</h3>
+            <p>Cada caminhão é comparado com ele mesmo nas últimas 4 semanas. Cada motorista, com os colegas que dirigiram o mesmo caminhão. Nunca contra uma referência abaixo da média da frota.</p>
+          </div>
+          <div class="principle">
+            <h3>É honesto com os números</h3>
+            <p>Economia sempre como "até". Dados que não fecham não viram acusação: o relatório avisa o que falta e o que melhoraria a análise.</p>
+          </div>
+          <div class="principle">
+            <h3>Fecha o ciclo</h3>
+            <p>Cada ação recebe uma resposta: feita, não procede ou era operação. Na semana seguinte, você vê se o consumo caiu e quanto foi recuperado. Recurso em implantação com as frotas fundadoras.</p>
+          </div>
+          <div class="principle">
+            <h3>Feito para o Brasil</h3>
+            <p>Diesel S10 pelo preço médio da ANP, caminhões pesados, linguagem do gestor brasileiro e suporte em português.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="para-quem">
+      <div class="wrap">
+        <div class="grid-2">
+          <div>
+            <p class="eyebrow">Para quem</p>
+            <h2>Frotas que vivem de diesel.</h2>
+            <p class="lead">Transportadoras e empresas com frota própria que já usam telemetria Geotab e querem transformar dados em economia, sem montar uma equipe de análise.</p>
+          </div>
+          <div class="card">
+            <dl class="fit">
+              <dt>Veículos</dt>
+              <dd>Caminhões pesados e médios; vans e leves.</dd>
+              <dt>Tamanho</dt>
+              <dd>De 30 a 300 veículos, para começar.</dd>
+              <dt>Setores</dt>
+              <dd>Transporte de cargas, distribuição, alimentos e bebidas, construção.</dd>
+              <dt>O que precisa</dt>
+              <dd>Telemetria Geotab com dados de motor. O Raio-X mostra o que seus dados já permitem analisar.</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="fundadoras">
+      <div class="wrap">
+        <div class="band">
+          <p class="eyebrow">Frotas fundadoras</p>
+          <h2>Estamos escolhendo as primeiras 5 frotas.</h2>
+          <p class="lead">Comece pelo Raio-X grátis: o diesel desperdiçado em reais e os 3 caminhões que mais pedem atenção.</p>
+          <ul>
+            <li>60 a 90 dias com tudo liberado, sem custo</li>
+            <li>Desconto permanente enquanto for cliente</li>
+            <li>Conversa semanal para ajustar o produto à sua operação</li>
+          </ul>
+          <div class="actions">
+            <a class="btn btn-primary" href="mailto:contato@combustivelia.com.br?subject=Quero%20o%20Raio-X%20gr%C3%A1tis">Pedir o Raio-X grátis</a>
+            <a class="btn btn-link" href="mailto:contato@combustivelia.com.br">contato@combustivelia.com.br</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <div class="wrap foot">
+      <a href="#" aria-label="Combustível IA, início"><img src="logo.svg" alt="Combustível IA" width="103" height="24"></a>
+      <div>
+        <p>Curitiba, Paraná · <a href="mailto:contato@combustivelia.com.br">contato@combustivelia.com.br</a></p>
+        <p>© 2026 Combustível IA. Geotab e MyGeotab são marcas da Geotab Inc.</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
