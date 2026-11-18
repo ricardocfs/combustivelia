@@ -4,14 +4,14 @@
   "version": "0.8.2",
   "items": [
     {
-      "url": "https://ricardocfs.github.io/combustivelia/addin/combustivelia.html",
+      "url": "https://combustivelia.com.br/addin/combustivelia.html",
       "path": "ActivityLink/",
       "menuName": {
         "pt-BR": "Combustível IA",
         "en": "Combustível IA",
         "es": "Combustible IA"
       },
-      "icon": "https://ricardocfs.github.io/combustivelia/addin/simbolo.svg"
+      "icon": "https://combustivelia.com.br/addin/simbolo.svg"
     }
   ],
   "files": {}

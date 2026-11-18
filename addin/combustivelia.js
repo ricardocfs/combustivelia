@@ -22,7 +22,7 @@
   // vem de diesel.json, atualizado todo mês; este é só o reserva, se o arquivo falhar.
   var DEFAULT_PRICE = 7.33;
   var PRICE_SOURCE = 'média ANP do diesel S10 em outubro/2026';
-  var PRICE_URL = 'https://ricardocfs.github.io/combustivelia/addin/diesel.json';
+  var PRICE_URL = 'https://combustivelia.com.br/addin/diesel.json';
   var dieselDefault = { price: DEFAULT_PRICE, label: PRICE_SOURCE };
   // Estimativa quando o veículo não informa o combustível gasto parado:
   // ~0,8 galão (≈3 L) por hora para caminhão pesado (Departamento de Energia dos EUA, AFDC)
